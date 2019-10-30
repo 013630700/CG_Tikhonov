@@ -1,2 +1,2 @@
 # CG_Tikhonov
-Make CG Tikhonov work for two material two energies decomposition tomography
+CG Tikhonov for two material and two energies decomposition X-Ray tomography
