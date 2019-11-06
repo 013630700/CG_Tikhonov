@@ -1,17 +1,8 @@
-function [ res ] = A2x2mult( A,c11,c12,c21,c22,g1,g2)
-% Make ATA * g
-res = [(c11.^2 + c21.^2)*(A.')*(A*g1(:))+(c11*c12+c21*c22)*(A.')*(A*g2(:)); (c12*c11+c22*c21)*(A.')*(A*g1(:))+(c12.^2+c22.^2)*(A.')*(A*g2(:))];
+function [ res ] = A2x2mult( a,c11,c12,c21,c22,g1,g2)
+% A*g
+Ag1 = c11*a*g1+c12*a*g2;
+Ag2 = c21*a*g1+c22*a*g2;
+% ATAg
+ATAg = [a'*Ag1*c11+a'*Ag2*c21; a'*Ag1*c12+ a'*Ag2*c22];
+res = ATAg;
 end
-
-
-% Tässä käytin vahingossa isoa Ata A_beautifulin sijaanThis function makes the combination matrix and multiplies it with vector
-% image vector g
-%A_Big = [c11*A c12*A; c21*A c22*A];
-%AT = [c11*A.' c12*A.'; c21*A.' c22*A.'];
-%ATA = AT*A_Big;
-%res = [(c11^2 + c21^2)*ATA*g1(:)+(c11*c12+c21*c22)*ATA*g2(:); (c12*c11+c22*c21)*ATA*g1(:)+(c12^2+c22^2)*ATA*g2(:)];
-
-% Tässä yritin tehdä yksinkertaistetun version, mutta g:n dimensiota tuli liikaa A = [c11*A c12*A; c21*A c22*A];
-% A = [c11*A c12*A; c21*A c22*A]; 
-% g = [g1(:); g2(:)];
-% res = A*g;
