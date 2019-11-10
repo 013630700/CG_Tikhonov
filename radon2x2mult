@@ -1,0 +1,8 @@
+function [ res ] = radon2x2mult(c11,c12,c21,c22,g1,g2,measang)
+% A*g
+Ag1 = c11*radon(g1,measang)+c12*radon(g2,measang);
+Ag2 = c21*radon(g1,measang)+c22*radon(g2,measang);
+% ATAg
+ATAg = [iradon(Ag1,measang,'none')*c11+iradon(Ag2,measang,'none')*c21; iradon(Ag1,measang,'none')*c12+ iradon(Ag2,measang,'none')*c22];
+res = ATAg;
+end
