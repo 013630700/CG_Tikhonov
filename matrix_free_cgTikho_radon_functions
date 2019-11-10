@@ -1,0 +1,74 @@
+% Example computations related to X-ray tomography. Here we apply Tikhonov 
+% regularization and solve the normal equations using the conjugate 
+% gradient method. The approach uses sparse matrix A and is much more
+% efficient computationally than the singular value decomposition approach.
+%
+% Jennifer Mueller and Samuli Siltanen, October 2012
+clear all;
+
+% Regularization parameter
+alpha = 10;
+
+% Maximum number of iterations
+K = 100;               
+
+% Measure computation time later; start clocking here
+tic
+
+% Construct phantom. You can modify the resolution parameter N.
+N      = 40;
+I1 = imread('HY_Al.bmp');
+target = double(I1);
+target = imresize(target, [N N]);
+
+% Choose measurement angles (given in degrees, not radians). 
+Nang    = N; 
+angle0  = -90;
+measang = angle0 + [0:(Nang-1)]/Nang*180;
+
+[m,s] = radon(target,measang);
+% Construct right hand side
+ b = iradonTmult(m,measang);
+ b     = iradon(m,measang,'none');
+ b     = b(2:end-1,2:end-1);
+ corxn = 7.65; % Incomprehensible correction factor
+ b     = corxn*b;
+
+% Solve the minimization problem using conjugate gradient method.
+% See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
+recn    = b;          % initial iterate is the backprojected data
+rho     = zeros(K,1); % initialize parameters
+
+% Compute residual using matrix-free implementation.
+%Hf     = radon(recn,measang);
+Hf     = radon_mult(b,measang);
+Hf     = iradonTmult(Hf,measang);
+Hf     = Hf(2:end-1,2:end-1);
+Hf     = corxn*Hf;
+Hf     = Hf + alpha*recn;
+r      = b-Hf;
+rho(1) = r(:).'*r(:);
+
+% Start iteration
+for kkk = 1:(K-1)
+    if kkk==1
+        p = r;
+    else
+        beta = rho(kkk)/rho(kkk-1);
+        p    = r + beta*p;
+    end
+    w          = radon_mult(p,measang);
+    w          = iradonTmult(w,measang);
+    w          = w(2:end-1,2:end-1);
+    w          = corxn*w;
+    w          = w + alpha*p;
+    a          = rho(kkk)/(p(:).'*w(:));
+    recn       = recn + a*p;
+    r          = r - a*w;
+    rho(kkk+1) = r(:).'*r(:);
+    if mod(kkk,10)==0
+        disp([kkk K])
+    end
+end
+
+imshow(recn,[]);
