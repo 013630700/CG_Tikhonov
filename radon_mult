@@ -1,0 +1,3 @@
+function [ res ] = radon_mult(recn,measang)
+res    = radon(recn,measang);
+end
