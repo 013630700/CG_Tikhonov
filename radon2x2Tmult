@@ -1,0 +1,4 @@
+function [ res ] = radon2x2Tmult(c11,c12,c21,c22,m1,m2,measang)
+% AT*m
+res = [c11*iradon(m1,measang,'none') + c21*iradon(m2,measang,'none'); c12*iradon(m1,measang,'none') + c22*iradon(m2,measang,'none')];
+end
