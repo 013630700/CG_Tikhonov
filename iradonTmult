@@ -1,4 +1,0 @@
-function [ res ] = iradonTmult(m,measang)
-% ATmult counts the transpose of matrix A and multiplies it with vector m
-res = iradon(m,measang,'none');
-end
