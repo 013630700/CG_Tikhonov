@@ -4,7 +4,7 @@ function [ res ] = A2x2Tmult(a,c11,c12,c21,c22,m1,m2 )
 % two images
 %
 % Version 1.0, September 13, 2019
-% (c) Salla Latva-Ã„ijÃ¶ and Samuli Siltanen 
+% (c) Salla Latva-Äijö and Samuli Siltanen 
 %
 % Routine for the two-energies and two materials scheme related to S Siltanen's 
 % method for solution of the conjugate gradient Tikhonov algorithm. Computes 
@@ -23,7 +23,7 @@ function [ res ] = A2x2Tmult(a,c11,c12,c21,c22,m1,m2 )
 % Returns
 % res       vertical vector A^T*m lengt(a*m1*2)
 % 
-% Last revision Salla Latva-Ã„ijÃ¶ Sep 2019
+% Last revision Salla Latva-Äijö Sep 2019
 
 
 % Perform the needed matrix multiplications

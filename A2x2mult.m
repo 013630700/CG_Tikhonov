@@ -4,7 +4,7 @@ function [ res ] = A2x2mult(a,c11,c12,c21,c22,g1,g2)
 % and two materials.
 %
 % Version 1.0, September 13, 2019
-% (c) Salla Latva-Ã„ijÃ¶ and Samuli Siltanen 
+% (c) Salla Latva-Äijö and Samuli Siltanen 
 %
 % Routine for the two-energies and two materials scheme related to S Siltanen's 
 % method for solution of the conjugate gradient Tikhonov algorithm. Computes 
@@ -21,10 +21,9 @@ function [ res ] = A2x2mult(a,c11,c12,c21,c22,g1,g2)
 % Returns
 % res       vertical vector with length (a*g1*2)
 %
-% Last revision Salla Latva-Ã„ijÃ¶ Sep 2019
+% Last revision Salla Latva-Äijö Sep 2019
 
-% Perform the needed matrix multiplications. This is the only place that
-% needs to change when coding a matrix-free version.
+% Perform the needed matrix multiplications
 ag1 = a*g1(:);
 ag2 = a*g2(:);
 
@@ -32,18 +31,9 @@ ag2 = a*g2(:);
 res1 = c11*ag1;
 res2 = c12*ag2;
 res3 = c21*ag1;
-res4 = c21*ag2;
+res4 = c22*ag2;
 
 % Combine results to the final result
 res = [res1 + res2; res3 + res4];
 end
 
-% Old version for historical reasons
-%function [ res ] = A2x2mult( a,c11,c12,c21,c22,g1,g2)
-%% A*g
-%Ag1 = c11*a*g1+c12*a*g2;
-%Ag2 = c21*a*g1+c22*a*g2;
-%% ATAg
-%ATAg = [a'*Ag1*c11+a'*Ag2*c21; a'*Ag1*c12+ a'*Ag2*c22];
-%res = ATAg;
-%end
