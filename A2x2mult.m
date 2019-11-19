@@ -23,7 +23,8 @@ function [ res ] = A2x2mult(a,c11,c12,c21,c22,g1,g2)
 %
 % Last revision Salla Latva-Äijö Sep 2019
 
-% Perform the needed matrix multiplications
+% Perform the needed matrix multiplications. This is the only place that
+% needs to change when coding a matrix-free version.
 ag1 = a*g1(:);
 ag2 = a*g2(:);
 
