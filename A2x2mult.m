@@ -1,10 +1,10 @@
-function [ res ] = A2x2mult(a,c11,c12,c21,c22,g1,g2)
-%function [ res ] = A2x2mult(a,c11,c12,c21,c22,g1,g2)
+function [ res ] = A2x2mult(a,c11,c12,c21,c22,g)
+%function [ res ] = A2x2mult(a,c11,c12,c21,c22,g)
 % This function calculates multiplication A*g for system with two images
 % and two materials.
 %
 % Version 1.0, September 13, 2019
-% (c) Salla Latva-Äijö and Samuli Siltanen 
+% (c) Salla Latva-ï¿½ijï¿½ and Samuli Siltanen 
 %
 % Routine for the two-energies and two materials scheme related to S Siltanen's 
 % method for solution of the conjugate gradient Tikhonov algorithm. Computes 
@@ -16,14 +16,16 @@ function [ res ] = A2x2mult(a,c11,c12,c21,c22,g1,g2)
 % c12       attenuation coefficient for material two (al) imaged with energy E1=30kV (low)
 % c21       attenuation coefficient for material one (iodine) imaged with energy E2=50kV (high)
 % c22       attenuation coefficient for material two (al) imaged with energy E1=50kV (high)
-% g1        reconstruction image of target 1 (aluminum)
-% g2        reconstruction image of target 2 (iodine)
+% g         reconstruction images of target 1 (aluminum) and target 2
+%           (iodine), stacked in vertical vector 
 % Returns
 % res       vertical vector with length (a*g1*2)
 %
-% Last revision Salla Latva-Äijö Sep 2019
+% Last revision Salla Latva-Ã„ijÃ¶ & Samuli Siltanen Nov 2019
 
 % Perform the needed matrix multiplications
+g1 = g(1:(end/2));
+g2 = g((end/2+1):end);
 ag1 = a*g1(:);
 ag2 = a*g2(:);
 
