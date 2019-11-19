@@ -3,8 +3,7 @@
 % gradient method. The approach uses sparse matrix A and is much more
 % efficient computationally than the singular value decomposition approach.
 %
-% Jennifer Mueller and Samuli Siltanen, October 2012
-clear all;
+% Salla Latva-Ã„ijÃ¶ and Samuli Siltanen, November 2019
 
 % Regularization parameter
 alpha = 1;              
@@ -66,43 +65,26 @@ measang = angle0 + [0:(Nang-1)]/Nang*180;
 % Load radonMatrix
 eval(['load RadonMatrix', num2str(N), ' A measang target N P Nang']);
 a = A;
-%% Load noisy measurements EIPÄS, tehdään RIKOS
-%eval(['load XRMC_NoCrime', num2str(N), ' N mnc mncn']);
-%[m,s] = radon(g1,measang);
-% % If you want, you can make the sinogram by radon
-% [m1,s] = radon(target1,measang);
-% [m2,s] = radon(target2,measang);
 
-% Check the sinograms: 
-% figure(1)
-% imshow(m1,[])
-% figure(2)
-% imshow(m2,[]);
+% Simulate noisy measurements; here including inverse crime
+m = A2x2mult(a,c11,c12,c21,c22,g);
+m = m+0.01*max(abs(m))*randn(size(m));
 
-
-m11 = c11*a*g1;% Energy 1 (low, 30kV)
-m21 = c21*a*g1;% Energy 2 (high, 50kV)
-m12 = c12*a*g2;% Energy 1 (low, 30kV)
-m22 = c22*a*g2;% Energy 2 (high, 50kV)
-% Sinograms of the simulated measurements: In reality the materials are in
-% the same object like this:
-m1 = m11 + m12;
-m2 = m21 + m22;
-m = [m1; m2];
-% Construct system matrix and first-order term for the minimization problem
+% Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
 % where 
 %         H = A^T A + alpha*I
 % and 
 %         b = A^T mn.
-% The positive constant alpha is the regularization parameter.o
-%b     = ATmult(A,m);  %old version: b     = A.'*m(:);
-b = A2x2Tmult(a,c11,c12,c21,c22,m1,m2);
-size(b)
+% The positive constant alpha is the regularization parameter
+
+b = A2x2Tmult(a,c11,c12,c21,c22,m);
+
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
 K   = 80;         % maximum number of iterations
-x   = b;          % initial iterate is the backprojected data
+g1   = b(1:end/2);          % initial iterate is the backprojected data
+g2   = b((end/2+1):end);    % initial iterate is the backprojected data
 rho = zeros(K,1); % initialize parameters
 
 % Compute residual using sparse matrices. NOTE CAREFULLY: it is important
@@ -112,50 +94,25 @@ rho = zeros(K,1); % initialize parameters
 
 % very old version: Hx     = (A.')*(A*x) + alpha*x; 
 % second try:       Hx     = (A.')*Amult(A,x) + alpha*x;
-Hx     = A2x2mult(a,c11,c12,c21,c22,g1,g2);
-size(Hx)
-AT     = [c11*a.' c21*a.'; c12*a.' c22*a.'];
-Hx     = AT*Hx;
-Hx     = Hx + alpha*x;
-r      = b-Hx;
-r1     = r(1:1600);
-r2     = r(1601:3200);
+Hg     = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g))
+Hg     = Hg + alpha*g;
+r      = b-Hg;
 rho(1) = r(:).'*r(:);
-
-%int p1 and p2
-p1=zeros(size(g1));
-p2=zeros(size(g2));
 
 % Start iteration
 for kkk = 1:K
     if kkk==1
         p = r;
-        p1 = r1;
-        p2 = r2;
     else
         beta = rho(kkk)/rho(kkk-1);
         p    = r + beta*p;
-        p1    = r1 + beta*p1;
-        p2    = r2 + beta*p2;
     end
-    % Tässä lasketaan matriisi kertolasku A*p. p on siis tilapäinen muuttuja
-    % x:lle eli se vastaa kuvaa.
     Ap         = A2x2mult(a,c11,c12,c21,c22,p1,p2);
-    % Tässä laskemme vielä transpoosin
     w          = AT*Ap;
-    %Lisätään alpha*x regularisointi termi
+    %Lisï¿½tï¿½ï¿½n alpha*x regularisointi termi
     w          = w + alpha*x;
-    w1         = w(1:1600);
-    w2         = w(1601:3200);
-    %En tiedä mikä on aS. Se on joku luku mikä tässä vaihtuu. Yksi
-    %luku.Ehkä se on se residuaali?
-    %p= [p1(:);p2(:)];
     aS          = rho(kkk)/(p.'*w);
-    aS1         = rho(kkk)/(p1.'*w1);
-    aS2         =rho(kkk)/(p2.'*w2);
-    %Tässä kuvaan lisätään residuaali kertaa tilapäismuuttuva kuva
     x          = x + aS*p;
-    %Mikä on r? r on myös kuva.
     r          = r - aS*w;
     rho(kkk+1) = r(:).'*r(:);
     disp([kkk K])
