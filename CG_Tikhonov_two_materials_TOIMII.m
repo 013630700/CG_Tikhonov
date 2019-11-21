@@ -3,11 +3,12 @@
 % gradient method. The approach uses sparse matrix A and is much more
 % efficient computationally than the singular value decomposition approach.
 %
-% Jennifer Mueller and Samuli Siltanen, October 2012
+% Salla Latva-Ã„ijÃ¶ and Samuli Siltanen, November 2019
 clear all;
 
 % Regularization parameter
-alpha = 1;              
+alpha = 100;              
+N      = 40;
 
 % Measure computation time later; start clocking here
 tic
@@ -19,18 +20,11 @@ c12 = 3.044;   %Al 30kV
 c22 = 0.994;   %Al 50kV
 
 % Construct phantom. You can modify the resolution parameter N.
-N      = 40;
-I1 = imread('HY_Al.bmp');
-target1 = double(I1);
-g1 = imresize(target1, [N N]);
-
-I2 = imread('HY_square_inv.jpg');
-target2 = double(I2);
-g2 = imresize(target2, [N N]);
-
+target1 = imresize(double(imread('HY_Al.bmp')),[N N]);
+target2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
 % Vektorize
-g1 = g1(:);
-g2 = g2(:);
+g1 = target1(:);
+g2 = target2(:);
 % Combine
 g=[g1;g2];
 
@@ -42,6 +36,7 @@ measang = angle0 + [0:(Nang-1)]/Nang*180;
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
 % % function gives.
+% target = target1;
 % P  = length(radon(target,0));
 % M  = length(measang);
 % A = sparse(M*P,N^2);
@@ -71,32 +66,26 @@ measang = angle0 + [0:(Nang-1)]/Nang*180;
 % Load radonMatrix
 eval(['load RadonMatrix', num2str(N), ' A measang target N P Nang']);
 a = A;
-%% Load noisy measurements EIPÄS, tehdään RIKOS
-%eval(['load XRMC_NoCrime', num2str(N), ' N mnc mncn']);
-%[m,s] = radon(g1,measang);
-m11 = c11*a*g1;% Energy 1 (low, 30kV)
-m21 = c21*a*g1;% Energy 2 (high, 50kV)
-m12 = c12*a*g2;% Energy 1 (low, 30kV)
-m22 = c22*a*g2;% Energy 2 (high, 50kV)
-% Sinograms of the simulated measurements: In reality the materials are in
-% the same object like this:
-m1 = m11 + m12;
-m2 = m21 + m22;
-m = [m1; m2];
-% Construct system matrix and first-order term for the minimization problem
+
+% Simulate noisy measurements; here including inverse crime
+m = A2x2mult(a,c11,c12,c21,c22,g);
+%m = m+0.001*max(abs(m))*randn(size(m));
+
+% Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
 % where 
 %         H = A^T A + alpha*I
 % and 
 %         b = A^T mn.
-% The positive constant alpha is the regularization parameter.o
-%b     = ATmult(A,m);  %old version: b     = A.'*m(:);
-b = A2x2Tmult(A,c11,c12,c21,c22,m1,m2);
+% The positive constant alpha is the regularization parameter
+b = A2x2Tmult(a,c11,c12,c21,c22,m);
+
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-K   = 80;         % maximum number of iterations
-x   = b;          % initial iterate is the backprojected data
+K   = 100;         % maximum number of iterations
+g   = b;  % initial iterate is the backprojected data
 rho = zeros(K,1); % initialize parameters
+
 % Compute residual using sparse matrices. NOTE CAREFULLY: it is important
 % to write (A.')*(A*x) on the next line instead of ((A.')*A)*x, 
 % because (A.')*A may be a full matrix and in that case we lose 
@@ -104,10 +93,10 @@ rho = zeros(K,1); % initialize parameters
 
 % very old version: Hx     = (A.')*(A*x) + alpha*x; 
 % second try:       Hx     = (A.')*Amult(A,x) + alpha*x;
-Hx     = A2x2mult(a,c11,c12,c21,c22,g1,g2);
-Hx     = Hx + alpha*x;
-r      = b-Hx;
-rho(1) = r.'*r;
+Hg     = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g)) + alpha*g;
+r      = b-Hg;
+rho(1) = r(:).'*r(:);
+
 % Start iteration
 for kkk = 1:K
     if kkk==1
@@ -116,26 +105,38 @@ for kkk = 1:K
         beta = rho(kkk)/rho(kkk-1);
         p    = r + beta*p;
     end
-    % very old version: w          = (A.')*(A*p) + alpha*p; 
-    % second try:       w          = (A.')*Amult(A,p) +alpha*p;
-    w          = A2x2mult(a,c11,c12,c21,c22,g1,g2) + alpha *p;
-    a          = rho(kkk)/(p.'*w);
-    x          = x + a*p;
-    r          = r - a*w;
-    rho(kkk+1) = r.'*r;
+    w         = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,p));
+    w          = w + alpha*p;
+    aS         = rho(kkk)/(p.'*w);
+    g          = g + aS*p;
+    r          = r - aS*w;
+    rho(kkk+1) = r(:).'*r(:);
     disp([kkk K])
+%   figure(1)
+%     recn1 = g(1:1600);
+%     recn1 = reshape(recn1,N,N);
+%     imshow(recn1,[]);
+%     pause(0.2);
+% %   recn2 = g(1601:3200);
+% %   recn2 = reshape(recn2,N,N);
+% %   imshow(recn2,[]);
+% %   pause(0.2);
 end
-%recn = reshape(x,N,N);
-recn = x;
-recn1 = x(1:1600);
-recn2 = x(1601:3200);
+recn = g;
+recn1 = g(1:1600);
+recn1 = reshape(recn1,N,N);
+recn2 = g(1601:3200);
+recn2 = reshape(recn2,N,N);
 
 % Determine computation time
 comptime = toc;
 
 % Compute relative errors
-%err_sup = max(max(abs(g1-recn)))/max(max(abs(g1)));
-%err_squ = norm(g1(:)-recn(:))/norm(g1(:));
+err_sup1 = max(max(abs(g1-recn1(:))))/max(max(abs(g1)));
+err_squ1 = norm(g1(:)-recn1(:))/norm(g1(:));
+
+err_sup2 = max(max(abs(g2-recn2(:))))/max(max(abs(g2)));
+err_squ2 = norm(g2(:)-recn2(:))/norm(g2(:));
 
 % Save result to file
 % eval(['save XRMG_Tikhonov', num2str(N), ' recn alpha target comptime err_sup err_squ']);
@@ -146,7 +147,7 @@ comptime = toc;
 %imshow(recn,[]);
 %% Take a look at the results. we plot the original phantoms and their
 % reconstructions into the same figure
-figure(3);
+figure(2);
 % Original target1
 subplot(2,2,1);
 imagesc(reshape(g1,N,N));
@@ -156,12 +157,11 @@ axis off;
 title({'M1, original'});
 % Reconstruction of target1
 subplot(2,2,2)
-reco1=reshape(recn1,N,N);
-imagesc(reco1);
+imagesc(recn1);
 colormap gray;
 axis square;
 axis off;
-title('M1 BB reco1 ');
+title('M1 CG recn1 ');
 % Original target2
 subplot(2,2,3)
 imagesc(reshape(g2,N,N));
@@ -171,9 +171,8 @@ axis off;
 title({'M2, original'});
 % Reconstruction of target2
 subplot(2,2,4)
-reco2=reshape(recn2,N,N);
-imagesc(reco2);
+imagesc(recn2);
 colormap gray;
 axis square;
 axis off;
-title(['M2 BB reco2, iter=' num2str(K)]);
+title(['M2 CG recn2, iter=' num2str(K)]);
