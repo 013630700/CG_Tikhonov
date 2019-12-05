@@ -25,7 +25,6 @@ function [ res ] = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang,N)
 %           images one top of each another
 % 
 % Last revision Salla Latva-Äijö Sep 2019
-m  = m(:);
 m1 = m(1:(end/2));
 m1 = reshape(m1, [61 N]);
 m2 = m((end/2+1):end);

@@ -6,15 +6,17 @@
 % efficient computationally than the singular value decomposition approach.
 %
 % Jennifer Mueller and Samuli Siltanen, October 2012
-%clear all;
+% Modified by Salla 5.12.2019
+
+clear all;
 
 % Regularization parameter
-alpha1  = 10;              
-alpha2  = 10000;%1
+alpha1  = 0;              
+alpha2  = 0;%1
 N       = 40;
 
 % Choose relative noise level in simulated noisy data
-noiselevel = 0.001;
+noiselevel = 0.00001;
 
 % Measure computation time later; start clocking here
 tic
@@ -34,13 +36,14 @@ g      = [g1(:);g2(:)];
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = N; 
 angle0  = -90;
-ang     = angle0 + [0:(Nang-1)]/Nang*180;
+measang     = angle0 + [0:(Nang-1)]/Nang*180;
 
 % Simulate noisy measurements
-m       = A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N); 
+m       = A2x2mult_matrixfree(c11,c12,c21,c22,g,measang,N); 
 % Add noise
 m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
-%%
+%m=max(m,0);
+%
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
 % where 
@@ -49,12 +52,13 @@ m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
 %         b = A^T mn.
 % The positive constant alpha is the regularization parameter
 b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,measang,N);
-%imshow(b,[]);
+% figure(102);
+% imshow(b,[]);
 %%
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
 K   = 250;         % maximum number of iterations
-x   = b;          % initial iterate is the backprojected data
+g   = b;          % initial iterate is the backprojected data
 rho = zeros(K,1); % initialize parameters
 
 % Compute residual using sparse matrices. NOTE CAREFULLY: it is important
@@ -84,7 +88,7 @@ for kkk = 1:K
     g          = g + aS*p;
     r          = r - aS*w;
     rho(kkk+1) = r(:).'*r(:);
-    disp([kkk K])
+    %disp([kkk K])
 %     figure(2)
 %     imshow(g,[]);
 %     pause;
@@ -105,10 +109,10 @@ comptime = toc;
 
 % Compute relative errors
 % Target 1
-err_sup1 = max(max(abs(g1-recn1)))/max(max(abs(g1)));
+%err_sup1 = max(max(abs(g1-recn1)))/max(max(abs(g1)));
 err_squ1 = norm(g1(:)-recn1(:))/norm(g1(:));
 % Target 2
-err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
+%err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
 err_squ2 = norm(g2(:)-recn2(:))/norm(g2(:));
 
 %% Take a look at the results. we plot the original phantoms and their

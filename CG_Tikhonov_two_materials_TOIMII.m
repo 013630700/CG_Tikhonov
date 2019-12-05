@@ -7,12 +7,12 @@
 clear all;
 
 % Regularization parameter
-alpha1  = 10;%10000
-alpha2  = 10000;%1
+alpha1  = 0;%10000
+alpha2  = 0;%1
 N       = 40;
 
 % Choose relative noise level in simulated noisy data
-noiselevel = 0.001;
+noiselevel = 0.00001;
 
 % Measure computation time later; start clocking here
 tic
@@ -36,7 +36,7 @@ g       = [g1;g2];
 Nang    = N; 
 angle0  = -90;
 measang = angle0 + [0:(Nang-1)]/Nang*180;
-%%
+
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
 % % function gives.
@@ -70,14 +70,15 @@ measang = angle0 + [0:(Nang-1)]/Nang*180;
 % Load radonMatrix
 eval(['load RadonMatrix', num2str(N), ' A measang target N P Nang']);
 a = A;
-%%
+
 % Simulate noisy measurements; here including inverse crime
 m = A2x2mult(a,c11,c12,c21,c22,g);
+
 % figure(5)
 % imshow(reshape(m,122,40),[]);
 % Add noise
 m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
-%%
+%m=max(m,0);
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
 % where 
@@ -122,7 +123,7 @@ for kkk = 1:K
     g          = g + aS*p;
     r          = r - aS*w;
     rho(kkk+1) = r(:).'*r(:);
-    disp([kkk K])
+    %disp([kkk K])
 %   figure(1)
 %     recn1 = g(1:1600);
 %     recn1 = reshape(recn1,N,N);
@@ -133,11 +134,9 @@ for kkk = 1:K
 % %   imshow(recn2,[]);
 % %   pause(0.2);
 end
-
-recn = g;
-recn1 = g(1:length(g(:))/2);%g(:)/2
+recn1 = g(1:(end/2));
 recn1 = reshape(recn1,N,N);
-recn2 = g(length(g(:))/2+1:length(g(:)));
+recn2 = g((end/2)+1:end);
 recn2 = reshape(recn2,N,N);
 
 % Determine computation time
