@@ -1,4 +1,5 @@
-% Here I replace the matrix multiplications by functions
+% Here I replace the matrix multiplications by functions, which still use
+% matrices
 %%%% MULTI ENERGY MATERIAL DECOMPOSITION CODE BARZILAI BORWEIN WITH NEW REGULARIZATION TERM %%%%
 %
 % Reconstruct two material phantom, imaged with two different energies, using Barzilai-Borwain

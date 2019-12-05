@@ -25,7 +25,7 @@ function [ res ] = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang,N)
 %           images one top of each another
 % 
 % Last revision Salla Latva-Äijö Sep 2019
-%m  = m(:);
+m  = m(:);
 m1 = m(1:(end/2));
 m1 = reshape(m1, [61 N]);
 m2 = m((end/2+1):end);
@@ -44,10 +44,10 @@ am2 = am2(2:end-1,2:end-1);
 am2 = corxn*am2;
 
 % Compute the parts of the result individually
-res1 = c11*am1;
-res2 = c21*am2;
-res3 = c12*am1;
-res4 = c22*am2;
+res1 = c11*am1(:);
+res2 = c21*am2(:);
+res3 = c12*am1(:);
+res4 = c22*am2(:);
 
 % Collect the results together
 res = [res1 + res2; res3 + res4];

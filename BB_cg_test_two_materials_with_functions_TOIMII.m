@@ -1,4 +1,4 @@
-% Here I replace the matrix multiplications by functions
+% Here I replace the matrix multiplications by functions (this code has both regularization terms!)
 %%%% MULTI ENERGY MATERIAL DECOMPOSITION CODE BARZILAI BORWEIN WITH NEW REGULARIZATION TERM %%%%
 %
 % Reconstruct two material phantom, imaged with two different energies, using Barzilai-Borwain
@@ -212,7 +212,7 @@ err_sup2 = max(max(abs(M2(:)-reco2(:))))/max(max(abs(reco2)));
 disp(['Sup relative error for second reconstruction: ', num2str(err_sup2)]);
 %% Take a look at the results. we plot the original phantoms and their
 % reconstructions into the same figure
-figure(3);
+figure(1);
 % Originbal M1
 subplot(2,2,1);
 imagesc(reshape(M1,M,M));

@@ -25,8 +25,6 @@ function [ res ] = A2x2mult_matrixfree( c11,c12,c21,c22,g,ang,N )
 
 % This function calculates multiplication A*g for system with two images
 % and two materials, without constructing the matrix A.
-
-g  = g(:);
 g1 = g(1:(end/2));
 g1 = reshape(g1,[N N]);
 g2 = g((end/2+1):end);
@@ -38,10 +36,10 @@ ag1 = radon(g1,ang);
 ag2 = radon(g2,ang);
 
 % Calculate the parts needed for block matrix multiplication
-res1 = c11*ag1;
-res2 = c12*ag2;
-res3 = c21*ag1;
-res4 = c22*ag2;
+res1 = c11*ag1(:);
+res2 = c12*ag2(:);
+res3 = c21*ag1(:);
+res4 = c22*ag2(:);
 
 % Combine results into the result
 res = [res1 + res2; res3 + res4];

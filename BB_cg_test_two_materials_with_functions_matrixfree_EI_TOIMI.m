@@ -1,22 +1,49 @@
-% Otan pois alpha 2:n
+% Here I try matrixfree version!!!!
 %%%% MULTI ENERGY MATERIAL DECOMPOSITION CODE BARZILAI BORWEIN WITH NEW REGULARIZATION TERM %%%%
 %
 % Reconstruct two material phantom, imaged with two different energies, using Barzilai-Borwain
 % conjugate gradient method. Second regularization term added!
-
-tic
 clear all;
+tic
 
 %% Choices for the user
 % Choose the size of the unknown. The image has size MxM.
 M = 40;
 % Choose the angles for tomographic projections
-Nang = 65; % odd number is preferred
+Nang = 40; % odd number is preferred
 
+%% Define attenuation coefficients c_ij of the two materials
+% Blood and bone
+% c_11 = 0.4083; %blood 30kV
+% c_21 = 0.2947; %blood 50kV
+% c_12 = 1.331;  %bone 30kV
+% c_22 = 0.4242; %bone 50kV
+
+% Al and PVC
+% c_11 = 2.096; %PVC 30kV
+% c_21 = 0.641; %PVC 50kV
+% c_12 = 3.044; %Al 30kV
+% c_22 = 0.994; %Al 50kV
+
+% Iodine and Al
+c11 = 42.2057; %Iodine 30kV
+c21 = 60.7376; %Iodine 50kV
+c12 = 3.044;   %Al 30kV
+c22 = 0.994;   %Al 50kV
+%% Construct target ****************************ADD c*************************************
+% Here we use simulated phantoms for both materials.
+% Define overlapping materials: HY phantoms!
+M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
+M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
+% Vektorize
+g1 = M1;
+g2 = M2;
+% Combine
+g=[g1;g2];
 %% Definitions and initializations
 % Some definitions
 n = M*M;
-angles = [0:(Nang-1)]*360/Nang;
+ang = [0:(Nang-1)]*360/Nang;
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Let's find out the eventual size of matrix A. Namely, the size is
@@ -56,78 +83,29 @@ angles = [0:(Nang-1)]*360/Nang;
 
 % Load precomputed results of the routine (commented above)
 % with the particular values of j and Nang above
-loadcommand = ['load RadonMatrix_', num2str(M), '_', num2str(Nang), ' M angles A'];
-eval(loadcommand)
-
-%% Define attenuation coefficients c_ij of the two materials
-% Blood and bone
-% c_11 = 0.4083; %blood 30kV
-% c_21 = 0.2947; %blood 50kV
-% c_12 = 1.331;  %bone 30kV
-% c_22 = 0.4242; %bone 50kV
-
-% Al and PVC
-% c_11 = 2.096; %PVC 30kV
-% c_21 = 0.641; %PVC 50kV
-% c_12 = 3.044; %Al 30kV
-% c_22 = 0.994; %Al 50kV
-
-% Iodine and Al
-c11 = 42.2057; %Iodine 30kV
-c21 = 60.7376; %Iodine 50kV
-c12 = 3.044;   %Al 30kV
-c22 = 0.994;   %Al 50kV
-
-%% Construct target ****************************ADD c*************************************
-% Here we use simulated phantoms for both materials.
-
-% Define overlapping materials: HY phantoms!
-
-M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
-M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
-%I2 = rgb2gray(I2);
-
-% % Lets take a look of phantoms
-% % First material M1
-% figure(1);
-% imagesc(M1);
-% axis equal;
-% axis off;
-% % Second material M2
-% figure(2);
-% imagesc(M2);
-% axis equal;
-% axis off;
-
-% Vectorize
-M1 = M1(:);
-M2 = M2(:);
+%loadcommand = ['load RadonMatrix_', num2str(M), '_', num2str(Nang), ' M angles A'];
+%eval(loadcommand)
+%a=A;
 %% Start reconstruction
-% Construct the two measurements with different energies:
+% Simulate noisy measurements; here including inverse crime
+m = A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M);
+%m = m+0.001*max(abs(m))*randn(size(m));
 
-% Energy 1 (low, 30kV)
-m11 = c11*A*M1;
-m21 = c21*A*M1;
-% Energy 2 (high, 50kV)
-m12 = c12*A*M2;
-m22 = c22*A*M2;
-
-% Sinograms of the simulated measurements: In reality the materials are in
-% the same object like this:
-m1 = m11 + m12;
-m2 = m21 + m22;
-
-% Combine to one m-vector 
-m = [m1; m2];
-
-% The combined system matrix of the simulated measurements
-A = [c11*A c12*A; c21*A c22*A];
+% Solve the minimization problem
+%         min (x^T H x - 2 b^T x), 
+% where 
+%         H = A^T A + alpha*I
+% and 
+%         b = A^T mn.
+% The positive constant alpha is the regularization parameter
+b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang,M);
 
 % Initialize g (the image vector containing both reconstuctions one after
 % another)
-g = zeros(2*M*M,1);
-alpha1 = 1;% For better results alpha_1 >= 1
-%alpha2 = 349; % better results with large values
+%old version: g = zeros(2*M*M,1);
+g = b; % initial iterate is the backprojected data
+alpha1 = 10;% For better results alpha_1 >= 1
+alpha2 = 0.02; % better results with small values!
 %% Start the iteration part
 %
 % First iteration (special one)
@@ -150,9 +128,13 @@ colormap;
 axis square;
 axis off;
 graddu = graddu(:);
-%gradF1 = 2*(A'*A)*u-2*A'*m+alpha*graddu;
+% gradF1 = 2*(A'*A)*u-2*A'*m+alpha*graddu;
 % Gradiend has now also alpha_2 term:
-gradF1 = 2*(A'*A)*g-2*A'*m+alpha1*2*g;%+alpha2*graddu;
+% old_version: gradF1 = 2*(A'*A)*g-2*A'*m+alpha1*2*g;%+alpha2*graddu;
+gradF1 = 2*A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M),ang,M);
+gradF1 = gradF1-2*b;
+gradF1 = gradF1+alpha1*2*g;
+gradF1 = gradF1+alpha2*graddu;
 disp('Gradient function F1 ready!');
 
 %% Decide the first step size
@@ -162,7 +144,7 @@ g = max(0,g-lambda*gradF1);
 %% Iterate (this is the real iteration scheme)
 disp('Iterating... ' );
 % Choose the number off iterations
-K=80;
+K=800;
 
 for iii = 1:K
     % Gradient for g again:
@@ -171,16 +153,21 @@ for iii = 1:K
         graddu(j) = g(i1(j))*g(i2(j))^2;
     end
     graddu = graddu(:);
-    g = g(:);
+  
     oldgradF1 = gradF1;
     % Count new gradient
-    gradF1 = 2*(A'*A)*g-2*A'*m+alpha1*2*g;%+alpha2*graddu;
+    %old version:gradF1 = 2*(A'*A)*g-2*A'*m+alpha1*2*g;%+alpha2*graddu;
+    gradF1 = 2*A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M),ang,M);
+    gradF1 = gradF1-2*b;
+    gradF1 = gradF1+alpha1*2*g;
+    gradF1 = gradF1+alpha2*graddu;
     % for historical reasons, we have this line here remembering how this
     % was before the second regularization term
     %gradF1 = 2*(A'*A)*u-2*A'*m+alpha*graddu;
     
-    % Update the step size
+    % Update the step size  
     lambda = (g-oldu)'*(g-oldu)/((g-oldu)'*(gradF1-oldgradF1));
+    g=reshape(g,[80 40]);
     oldu = g;
     g = max(0,g-lambda*gradF1);
     % Show how the iterations proceed
@@ -241,7 +228,7 @@ imagesc(reco1);
 colormap gray;
 axis square;
 axis off;
-title(['M1 BB reco1, \alpha_1 = ' num2str(alpha1)]);
+title(['M1 BB reco1, \alpha_1 = ' num2str(alpha1), ', \alpha_2 = ' num2str(alpha2)]);
 % Original M2
 subplot(2,2,3)
 imagesc(reshape(M2,M,M));
