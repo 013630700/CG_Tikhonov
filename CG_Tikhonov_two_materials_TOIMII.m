@@ -7,8 +7,8 @@
 clear all;
 
 % Regularization parameter
-alpha1  = 0;%10000
-alpha2  = 0;%1
+alpha1  = 10;%10000
+alpha2  = 1000;%1
 N       = 40;
 
 % Choose relative noise level in simulated noisy data
@@ -29,20 +29,24 @@ target2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
 % Vektorize
 g1      = target1(:);
 g2      = target2(:);
+% Normalize original data
+g1=normalize(g1);
+g2=normalize(g2);
+
 % Combine
 g       = [g1;g2];
 
 % Choose measurement angles (given in degrees, not radians). 
-Nang    = N; 
+Nang    = 40; 
 angle0  = -90;
-measang = angle0 + [0:(Nang-1)]/Nang*180;
+ang = angle0 + [0:(Nang-1)]/Nang*180;
 
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
 % % function gives.
 % target = target1;
 % P  = length(radon(target,0));
-% M  = length(measang);
+% M  = length(ang);
 % A = sparse(M*P,N^2);
 % 
 % % Construct measurement matrix column by column. The trick is to construct
@@ -51,7 +55,7 @@ measang = angle0 + [0:(Nang-1)]/Nang*180;
 %     for iii = 1:N^2
 %         tmpvec                  = zeros(N^2,1);
 %         tmpvec(iii)             = 1;
-%         A((mmm-1)*P+(1:P),iii) = radon(reshape(tmpvec,N,N),measang(mmm));
+%         A((mmm-1)*P+(1:P),iii) = radon(reshape(tmpvec,N,N),ang(mmm));
 %         if mod(iii,100)==0
 %             disp([mmm, M, iii, N^2])
 %         end
@@ -59,16 +63,16 @@ measang = angle0 + [0:(Nang-1)]/Nang*180;
 % end
 % 
 % % Test the result
-% Rtemp = radon(target,measang);
+% Rtemp = radon(target,ang);
 % Rtemp = Rtemp(:);
 % Mtemp = A*target(:);
 % disp(['If this number is small, then the matrix A is OK: ', num2str(max(max(abs(Mtemp-Rtemp))))]);
 % 
 % % Save the result to file (with filename containing the resolution N)
-% eval(['save RadonMatrix', num2str(N), ' A measang target N P Nang']);
+% eval(['save RadonMatrix', num2str(N), ' A ang target N P Nang']);
 
 % Load radonMatrix
-eval(['load RadonMatrix', num2str(N), ' A measang target N P Nang']);
+eval(['load RadonMatrix', num2str(N), ' A ang target N P Nang']);
 a = A;
 
 % Simulate noisy measurements; here including inverse crime
@@ -138,7 +142,9 @@ recn1 = g(1:(end/2));
 recn1 = reshape(recn1,N,N);
 recn2 = g((end/2)+1:end);
 recn2 = reshape(recn2,N,N);
-
+% Normalize original data
+recn1=normalize(recn1);
+recn2=normalize(recn2);
 % Determine computation time
 comptime = toc;
 
@@ -172,7 +178,7 @@ imagesc(recn1);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error: ', num2str(err_squ1)]);
+title(['Relative error=', num2str(err_squ1), ', \alpha_1=', num2str(alpha1)]);
 % Original target2
 subplot(2,2,3)
 imagesc(reshape(g2,N,N));
@@ -186,4 +192,4 @@ imagesc(recn2);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error: ' num2str(err_squ2)]);
+title(['Relative error=' num2str(err_squ2), ', \alpha_2=' num2str(alpha2)]);

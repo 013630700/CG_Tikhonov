@@ -1,4 +1,4 @@
-% I try to make this work with the functions and matrices!
+% So I am trying to make this wotk first with thw functions and matrices!
 %% Level set method, HY example for one slice! case n=2
 % This modified level set method allows target to change in time.
 % Tomographic reconstruction is found as a minimizer of a nonlinear

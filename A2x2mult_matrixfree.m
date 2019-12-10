@@ -19,7 +19,7 @@ function [ res ] = A2x2mult_matrixfree( c11,c12,c21,c22,g,ang,N )
 % ang      measurement angles
 % N        NxN is the size of the image g1 and g2 
 % Returns
-% res       sinograms of g, as images one after onother (size x*40) 
+% res       sinograms of g, as images one after another (size x*40) 
 %
 % Last revision Salla Latva-Äijö Sep 2019
 

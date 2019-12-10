@@ -7,12 +7,12 @@
 %
 % Jennifer Mueller and Samuli Siltanen, October 2012
 % Modified by Salla 5.12.2019
-
 clear all;
 
+%% Choises for the user
 % Regularization parameter
-alpha1  = 0;              
-alpha2  = 0;%1
+alpha1  = 10;              
+alpha2  = 10000;
 N       = 40;
 
 % Choose relative noise level in simulated noisy data
@@ -21,25 +21,31 @@ noiselevel = 0.00001;
 % Measure computation time later; start clocking here
 tic
 
-% Define coefficients: Iodine and Al
+% Define attenuation coefficients: Iodine and Al
 c11    = 42.2057; %Iodine 30kV
 c21    = 60.7376; %Iodine 50kV
 c12    = 3.044;   %Al 30kV
 c22    = 0.994;   %Al 50kV
 
-% Construct phantom. You can modify the resolution parameter N.
-
+%% Construct phantom. You can modify the resolution parameter N.
 g1     = imresize(double(imread('HY_Al.bmp')),[N N]);
 g2     = imresize(double(imread('HY_square_inv.jpg')),[N N]);
+
+% % Normalize original data
+% g1=normalize(g1);
+% g2=normalize(g2);
+
+% Combine
 g      = [g1(:);g2(:)];
 
 % Choose measurement angles (given in degrees, not radians). 
-Nang    = N; 
+Nang    = 40; 
 angle0  = -90;
-measang     = angle0 + [0:(Nang-1)]/Nang*180;
+ang     = angle0 + [0:(Nang-1)]/Nang*180;
 
 % Simulate noisy measurements
-m       = A2x2mult_matrixfree(c11,c12,c21,c22,g,measang,N); 
+m       = A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N); 
+
 % Add noise
 m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
 %m=max(m,0);
@@ -51,7 +57,7 @@ m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
 % and 
 %         b = A^T mn.
 % The positive constant alpha is the regularization parameter
-b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,measang,N);
+b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang);
 % figure(102);
 % imshow(b,[]);
 %%
@@ -69,7 +75,7 @@ rho = zeros(K,1); % initialize parameters
 
 %alpha matriisin tilalle: Reg_mat
 Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
-Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,measang,N),measang,N) + Reg_mat*g(:);
+Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N),ang) + Reg_mat*g(:);
 
 r    = b-Hg;
 rho(1) = r(:).'*r(:);
@@ -82,7 +88,7 @@ for kkk = 1:K
         beta = rho(kkk)/rho(kkk-1);
         p    = r + beta*p;
     end
-    w          = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,p,measang,N),measang,N);
+    w          = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,p,ang,N),ang);
     w          = w + Reg_mat*p;
     aS         = rho(kkk)/(p.'*w);
     g          = g + aS*p;
@@ -97,41 +103,39 @@ for kkk = 1:K
 % %   imshow(recn2,[]);
 % %   pause(0.2);
 end
-recn1 = g(1:(end/2),1:end);
-% figure(1000);
-% imshow(recn1,[]);
-recn1 = reshape(recn1,N,N);
-recn2 = g((end/2)+1:end,1:end);
-recn2 = reshape(recn2,N,N);
+recn1 = reshape(g(1:(end/2),1:end),N,N);
+recn2 = reshape(g((end/2)+1:end,1:end),N,N);
+
+% % Normalize image
+% recn1 = normalize(recn1);
+% recn2 = normalize(recn2);
 
 % Determine computation time
 comptime = toc;
-
-% Compute relative errors
-% Target 1
+%% Compute the error
+% Square error of reconstruction 1:
 %err_sup1 = max(max(abs(g1-recn1)))/max(max(abs(g1)));
 err_squ1 = norm(g1(:)-recn1(:))/norm(g1(:));
 % Target 2
 %err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
 err_squ2 = norm(g2(:)-recn2(:))/norm(g2(:));
 
-%% Take a look at the results. we plot the original phantoms and their
-% reconstructions into the same figure
+%% Take a look at the results
 figure(1);
-% Original target1
+% Original phantom1
 subplot(2,2,1);
 imagesc(reshape(g1,N,N));
 colormap gray;
 axis square;
 axis off;
-title({'M1, original, matrixfree'});
-% Reconstruction of target1
+title({'Phantom1, matrixfree'});
+% Reconstruction of phantom1
 subplot(2,2,2)
 imagesc(recn1);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error: ', num2str(err_squ1)]);
+title(['Relative error=', num2str(err_squ1), ', \alpha_1=', num2str(alpha1)]);
 % Original target2
 subplot(2,2,3)
 imagesc(reshape(g2,N,N));
@@ -145,4 +149,4 @@ imagesc(recn2);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error: ' num2str(err_squ2)]);
+title(['Relative error=' num2str(err_squ2), ', \alpha_2=' num2str(alpha2)]);

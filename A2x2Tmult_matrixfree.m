@@ -1,4 +1,4 @@
-function [ res ] = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang,N)
+function [ res ] = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang)
 % function [ res ] = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang,N)
 % This function calculates multiplication AT*m for system with 
 % two images and two energies with using iradon.
@@ -19,16 +19,15 @@ function [ res ] = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang,N)
 % c22       attenuation coefficient for material two (al) imaged with energy E1=50kV (high)
 % m         measurement (sinogram) of material one
 % ang       measurement angles used in X-raying the target
-% N         ?xN is the size of measurement m1 and m2
 % Returns
 % res       gives unfiltered backprojection of the images and gives unfiltered
 %           images one top of each another
 % 
 % Last revision Salla Latva-Äijö Sep 2019
 m1 = m(1:(end/2));
-m1 = reshape(m1, [61 N]);
+m1 = reshape(m1, [length(m)/(2*length(ang)) length(ang)]);
 m2 = m((end/2+1):end);
-m2 = reshape(m2, [61 N]);
+m2 = reshape(m2, [length(m)/(2*length(ang)) length(ang)]);
 
 corxn = 7.65; % Incomprehensible correction factor
 
