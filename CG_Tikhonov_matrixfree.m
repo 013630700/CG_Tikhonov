@@ -11,7 +11,7 @@ clear all;
 
 %% Choises for the user
 % Regularization parameter
-alpha1  = 10;              
+alpha1  = 100;              
 alpha2  = 10000;
 N       = 40;
 
@@ -22,11 +22,20 @@ noiselevel = 0.00001;
 tic
 
 % Define attenuation coefficients: Iodine and Al
+material1='aluminum';
+material2='Iodine';
 c11    = 42.2057; %Iodine 30kV
 c21    = 60.7376; %Iodine 50kV
 c12    = 3.044;   %Al 30kV
 c22    = 0.994;   %Al 50kV
 
+% Define attenuation coefficients: Iodine and PVC
+% material1='PVC';
+% material2='Iodine';
+% c11    = 42.2057; %Iodine 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c12    = 2.096346;%PVC 30kV
+% c22    = 0.640995;%PVC 50kV
 %% Construct phantom. You can modify the resolution parameter N.
 g1     = imresize(double(imread('HY_Al.bmp')),[N N]);
 g2     = imresize(double(imread('HY_square_inv.jpg')),[N N]);
@@ -63,7 +72,7 @@ b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang);
 %%
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-K   = 250;         % maximum number of iterations
+K   = 300;         % maximum number of iterations
 g   = b;          % initial iterate is the backprojected data
 rho = zeros(K,1); % initialize parameters
 
@@ -128,7 +137,7 @@ imagesc(reshape(g1,N,N));
 colormap gray;
 axis square;
 axis off;
-title({'Phantom1, matrixfree'});
+title({material1,' Phantom1, matrixfree'});
 % Reconstruction of phantom1
 subplot(2,2,2)
 imagesc(recn1);
@@ -142,7 +151,7 @@ imagesc(reshape(g2,N,N));
 colormap gray;
 axis square;
 axis off;
-title({'M2, original, matrixfree'});
+title({material2,'Phantom2, matrixfree'});
 % Reconstruction of target2
 subplot(2,2,4)
 imagesc(recn2);
@@ -150,3 +159,36 @@ colormap gray;
 axis square;
 axis off;
 title(['Relative error=' num2str(err_squ2), ', \alpha_2=' num2str(alpha2)]);
+%%
+figure(6);
+% Original phantom1
+subplot(2,2,1);
+imagesc(reshape(g1,N,N));
+colormap jet;
+axis square;
+axis off;
+title({material1,', Phantom1, BB, matrixfree'});
+% Reconstruction of phantom1
+subplot(2,2,2)
+recn1=reshape(g(1:(length(g)/2)),N,N);
+imagesc(recn1);
+colormap jet;
+axis square;
+axis off;
+title(['Relative error=', num2str(err_squ1), ', \alpha_1=', num2str(alpha1), ', \beta=', num2str(beta)]);
+% Original M2
+subplot(2,2,3)
+imagesc(reshape(g2,N,N));
+colormap jet;
+axis square;
+axis off;
+title({material2,', Phantom2, BB, matrix free'});
+% Reconstruction of phantom2
+subplot(2,2,4)
+recn2=reshape(g(length(g)/2+1:end),N,N);
+imagesc(recn2);
+colormap jet;
+axis square;
+axis off;
+title(['Relative error=' num2str(err_squ2), ', \alpha_2=' num2str(alpha2)]);
+toc

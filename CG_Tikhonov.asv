@@ -5,17 +5,21 @@
 %
 % Salla Latva-Äijö and Samuli Siltanen, November 2019
 clear all;
-
-% Regularization parameter
-alpha1  = 10;%10000
-alpha2  = 1000;%1
-N       = 40;
-
-% Choose relative noise level in simulated noisy data
-noiselevel = 0.00001;
-
 % Measure computation time later; start clocking here
 tic
+
+% Regularization parameter
+alpha1  = 1000;%10000
+alpha2  = 1000;%1
+N       = 40;
+iter    = 200;% maximum number of iterations
+
+% Choose relative noise level in simulated noisy data
+noiselevel = 0.0001;
+% Choose measurement angles (given in degrees, not radians). 
+Nang    = 65; 
+angle0  = -90;
+ang = angle0 + [0:(Nang-1)]/Nang*180;
 
 % Define coefficients: Iodine and Al
 c11     = 42.2057; %Iodine 30kV
@@ -23,23 +27,28 @@ c21     = 60.7376; %Iodine 50kV
 c12     = 3.044;   %Al 30kV
 c22     = 0.994;   %Al 50kV
 
-% Construct phantom. You can modify the resolution parameter N.
-target1 = imresize(double(imread('HY_Al.bmp')),[N N]);
-target2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
-% Vektorize
-g1      = target1(:);
-g2      = target2(:);
-% Normalize original data
-g1=normalize(g1);
-g2=normalize(g2);
+% Define attenuation coefficients: Iodine and PVC
+% material1='PVC';
+% material2='Iodine';
+% c11    = 42.2057; %Iodine 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c12    = 2.096346;%PVC 30kV
+% c22    = 0.640995;%PVC 50kV
 
+% Construct phantom. You can modify the resolution parameter N.
+M2 = imresize(double(imread('HY_Al.bmp')),[N N]);
+M1 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
+%Take away negative pixels
+M1 = max(M1,0);
+M2 = max(M2,0);
+% Take away negative pixel values
+M1 = max(M1,0);
+M2 = max(M2,0);
+% Vektorize
+g1      = M1(:);
+g2      = M2(:);
 % Combine
 g       = [g1;g2];
-
-% Choose measurement angles (given in degrees, not radians). 
-Nang    = 40; 
-angle0  = -90;
-ang = angle0 + [0:(Nang-1)]/Nang*180;
 
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
@@ -77,12 +86,9 @@ a = A;
 
 % Simulate noisy measurements; here including inverse crime
 m = A2x2mult(a,c11,c12,c21,c22,g);
-
-% figure(5)
-% imshow(reshape(m,122,40),[]);
 % Add noise
-m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
-%m=max(m,0);
+m = m + noiselevel*max(abs(m(:)))*randn(size(m));
+
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
 % where 
@@ -94,9 +100,8 @@ b = A2x2Tmult(a,c11,c12,c21,c22,m);
 %%
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-K   = 250;         % maximum number of iterations
 g   = b;  % initial iterate is the backprojected data
-rho = zeros(K,1); % initialize parameters
+rho = zeros(iter,1); % initialize parameters
 
 % Compute residual using sparse matrices. NOTE CAREFULLY: it is important
 % to write (A.')*(A*x) on the next line instead of ((A.')*A)*x, 
@@ -114,7 +119,7 @@ r      = b-Hg;
 rho(1) = r(:).'*r(:);
 
 % Start iteration
-for kkk = 1:K
+for kkk = 1:iter
     if kkk==1
         p = r;
     else
@@ -133,63 +138,55 @@ for kkk = 1:K
 %     recn1 = reshape(recn1,N,N);
 %     imshow(recn1,[]);
 %     pause(0.2);
-% %   recn2 = g(1601:3200);
-% %   recn2 = reshape(recn2,N,N);
-% %   imshow(recn2,[]);
+%   recn2 = g(1601:3200);
+%   recn2 = reshape(recn2,N,N);
+%   imshow(recn2,[]);
 % %   pause(0.2);
 end
 recn1 = g(1:(end/2));
 recn1 = reshape(recn1,N,N);
 recn2 = g((end/2)+1:end);
 recn2 = reshape(recn2,N,N);
-% Normalize original data
-recn1=normalize(recn1);
-recn2=normalize(recn2);
+
 % Determine computation time
 comptime = toc;
 
 % Compute relative errors
 %err_sup1 = max(max(abs(g1-recn1(:))))/max(max(abs(g1)));
-err_squ1 = norm(g1(:)-recn1(:))/norm(g1(:));
-
+err_squ1 = norm(M1(:)-recn1(:))/norm(M1(:));
 %err_sup2 = max(max(abs(g2-recn2(:))))/max(max(abs(g2)));
-err_squ2 = norm(g2(:)-recn2(:))/norm(g2(:));
+err_squ2 = norm(M2(:)-recn2(:))/norm(M2(:));
 
 % Save result to file
 % eval(['save XRMG_Tikhonov', num2str(N), ' recn alpha target comptime err_sup err_squ']);
 
-% View the results
-%XRMG_Tikhonov_plot(N)
-%figure(100);
-%imshow(recn,[]);
-%% Take a look at the results. we plot the original phantoms and their
-% reconstructions into the same figure
+%% Take a look at the results
 figure(2);
 % Original target1
 subplot(2,2,1);
-imagesc(reshape(g1,N,N));
+imagesc(reshape(M1,N,N));
 colormap gray;
 axis square;
 axis off;
-title({'M1, original'});
+title({'M1, CG_Tik, Aluminum'});
 % Reconstruction of target1
 subplot(2,2,2)
 imagesc(recn1);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=', num2str(err_squ1), ', \alpha_1=', num2str(alpha1)]);
+title(['Relative error=', num2str(err_squ1), ', \alpha_1=', num2str(alpha1),',\alpha_2=' num2str(alpha2)]);
 % Original target2
 subplot(2,2,3)
-imagesc(reshape(g2,N,N));
+imagesc(reshape(M2,N,N));
 colormap gray;
 axis square;
 axis off;
-title({'M2, original'});
+title({'M2, Iodine Iodine'});
 % Reconstruction of target2
 subplot(2,2,4)
 imagesc(recn2);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=' num2str(err_squ2), ', \alpha_2=' num2str(alpha2)]);
+title(['Relative error=' num2str(err_squ2), ', iter=' num2str(iter)]);
