@@ -6,20 +6,16 @@
 % minimize the functional F2 but drop for simplicity the mixed derivatives from the functional. 
 
 % Salla Latva-Äijö revisited 8.12.2019
-
 clear all;
-
+% Measure computation time later; start clocking here
+tic
 % Regularization parameter
 alpha1  = 10;%10000
 alpha2  = 1000;%1
 N       = 40;
-
 % Choose relative noise level in simulated noisy data
 noiselevel = 0.00001;
-
-% Measure computation time later; start clocking here
-tic
-
+iter    = 20;
 % Define coefficients: Iodine and Al
 c11     = 42.2057; %Iodine 30kV
 c21     = 60.7376; %Iodine 50kV
@@ -27,15 +23,14 @@ c12     = 3.044;   %Al 30kV
 c22     = 0.994;   %Al 50kV
 
 % Construct phantom. You can modify the resolution parameter N.
-target1 = imresize(double(imread('HY_Al.bmp')),[N N]);
-target2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
+M1 = imresize(double(imread('HY_Al.bmp')),[N N]);
+M2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
+% Take away negative pixel values
+M1 = max(M1,0);
+M2 = max(M2,0);
 % Vektorize
-g1      = target1(:);
-g2      = target2(:);
-% Normalize original data
-g1=normalize(g1);
-g2=normalize(g2);
-
+g1      = M1(:);
+g2      = M2(:);
 % Combine
 g       = [g1;g2];
 
@@ -213,7 +208,7 @@ g = g-lam*gradF2;
 
 %% Iterate
 disp('Iterating... ' );
-for l = 1:7
+for l = 1:iter
 graddu2 = [];
 g = reshape(g,[ss,ss,tt]);
 for ii = 1:ss

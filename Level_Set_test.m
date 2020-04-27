@@ -30,6 +30,7 @@ c22 = 0.994;   %Al 50kV
 % Define overlapping materials: HY phantoms!
 M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
 M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
+
 % Vektorize
 g1 = M1(:);
 g2 = M2(:);

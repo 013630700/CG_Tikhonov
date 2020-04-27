@@ -36,6 +36,6 @@ res3 = c21*ag1;
 res4 = c22*ag2;
 
 % Combine results to the final result
-res = [res1 + res2; res3 + res4];
+res = [res1 + res2; res3 + res4]; %m
 end
 
