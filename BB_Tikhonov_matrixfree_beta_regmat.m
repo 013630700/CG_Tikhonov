@@ -2,7 +2,7 @@
 % Here I replace the matrix multiplications by matrix free functions
 % Reconstruct two material phantom, imaged with two different energies, using Barzilai-Borwain
 % conjugate gradient method. Second regularization term added!
-%clear all;
+clear all;
 % Measure computation time: start clocking here
 tic
 %% Choices for the user
@@ -11,10 +11,10 @@ M          = 40;
 % Adjust regularization parameters
 alpha1     = 100;             
 alpha2     = 100;
-beta       = 20;
+beta       = 85;
 % Adjust noise level and number of iterations
 %noiselevel = 0.0001;
-iter       = 6000;
+iter       = 3000;
 % Choose the angles for tomographic projections
 Nang       = 65; % odd number is preferred
 ang        = [0:(Nang-1)]*360/Nang;
@@ -34,9 +34,12 @@ c22    = 0.640995;%PVC 50kV
 % Construct target
 % Here we use simulated phantoms for both materials.
 % Define overlapping materials: HY phantoms!
-M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
-M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
-
+%M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
+%M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
+M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [M M]);
+M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [M M]);
+M1=M1(:,:,1);
+M2=M2(:,:,1);
 % % Try to normalize the image between 0 and 255
 % min1=min(min(M1));
 % max1=max(max(M1));
@@ -52,10 +55,12 @@ g2 = M2(:);
 % Combine
 g  =[g1;g2];
 %% Start reconstruction
-% Simulate measurements
+% Simulate measurements SINOGRAM
 m  = A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M);
 m_matrixfree=m;
-
+%g sis‰lt‰‰ nyt molemmat kuvat dropattuna vektoreiksi. Mutta reali
+%mittauksessa meill‰ ei ole g:t‰. Meill‰ on vain m. Sinogrammi. Tuleeko
+%siin‰ siis sitten olla molem
 
 
 % Add noise
@@ -111,7 +116,8 @@ graddu = zeros(N,1);
 % Count the second regterm
 i1 = 1:N; i2 = [N/2+1:N,1:N/2];
 for j = 1:N
-    graddu(j) = g(i1(j))*g(i2(j))^2;
+    graddu(j) = g(i2(j));
+    %graddu(j) = g(i1(j))*g(i2(j))^2;vanha!
 end
 disp('Creating gradient function...');
 graddu = graddu(:);
@@ -130,7 +136,8 @@ for iii = 1:iter
     % Gradient for g again:
     i1 = 1:N; i2 = [N/2+1:N,1:N/2];
     for j=1:N
-        graddu(j) = g(i1(j))*g(i2(j))^2;
+        %graddu(j) = g(i1(j))*g(i2(j))^2;
+        graddu(j) = g(i2(j));
     end
     graddu = graddu(:);
     g = g(:);

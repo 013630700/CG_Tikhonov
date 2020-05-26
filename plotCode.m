@@ -26,7 +26,7 @@ imagesc(M1);
 colormap gray;
 axis square;
 axis off;
-title({'Iodine'});
+title({'PVC'});
 
 % Reconstruction of M1 (Barzilein Borwein Tikhonov with matrix) BBM
 subplot(2,5,2)
@@ -63,13 +63,13 @@ title(['CG, err = ', num2str(err_CG1)]);
 %%
 %%%%%%%%%%%%%% MATERIAL M2 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Original M2, (original PVC Phantom)
+% Original M2, (original Iodine Phantom)
 subplot(2,5,6)
 imagesc(M2);
 colormap gray;
 axis square;
 axis off;
-title({'PVC'});
+title({'Iodine'});
 
 % Reconstruction of M2 (Barzilain Borwein Tikhonov with matrix) BBM
 subplot(2,5,7)

@@ -12,7 +12,7 @@ tic
 alpha1  = 10;
 alpha2  = 0.00001;
 N       = 40;
-iter    = 600;% maximum number of iterations
+iter    = 900;% maximum number of iterations
 
 % Choose relative noise level in simulated noisy data
 %noiselevel = 0.0001;
@@ -36,10 +36,13 @@ c12    = 2.096346;%PVC 30kV
 c22    = 0.640995;%PVC 50kV
 
 % Construct phantom. You can modify the resolution parameter N.
-M1 = imresize(double(imread('HY_Al.bmp')),[N N]);
+%M1 = imresize(double(imread('HY_Al.bmp')),[N N]);
 %M2=scale01(M2);
-
-M2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
+%M2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
+M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
+M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
+M1=M1(:,:,1);
+M2=M2(:,:,1);
 
 % % Try to normalize the image between 0 and 255
 % min1=min(min(M1));
@@ -125,6 +128,8 @@ rho = zeros(iter,1); % initialize parameters
 
 %alpha matriisin tilalle: Reg_mat
 Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
+% ***New***
+%Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)]
 Hg     = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g)) + Reg_mat*g;
 
 r      = b-Hg;

@@ -11,11 +11,11 @@ M       = 40;
 % Adjust regularization parameters
 alpha1  = 100; %10
 alpha2  = 100;
-beta    = 20;
+beta    = 85;
 % Choose relative noise level in simulated noisy data
 %noiselevel = 0.0001;
 % Choose number of iterations
-iter    = 6000;
+iter    = 9000;
 % Choose the angles for tomographic projections
 Nang    = 65; % odd number is preferred
 ang     = [0:(Nang-1)]*360/Nang;
@@ -34,9 +34,12 @@ c22    = 0.640995;%PVC 50kV
 
 % Construct target
 % Here we use simulated phantoms for both materials.
-M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
-M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
-
+%M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
+%M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
+M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [M M]);
+M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [M M]);
+M1=M1(:,:,1);
+M2=M2(:,:,1);
 % % Try to normalize the image between 0 and 255
 % min1=min(min(M1));
 % max1=max(max(M1));
@@ -148,7 +151,8 @@ graddu=zeros(N,1);
 % Count the gradient
 i1 = 1:N; i2 = [N/2+1:N,1:N/2];
 for j=1:N
-    graddu(j) = g(i1(j))*g(i2(j))^2;
+    graddu(j) = g(i2(j));
+    %graddu(j) = g(i1(j))*g(i2(j))^2;
 end
 % For historical reasons, we have here the handmade gradient for 2*2 system:
 % graddu = [u(1)*u(5)^2; u(2)*u(6)^2; u(3)*u(7)^2; u(4)*u(8)^2; u(5)*u(1)^2;u(6)*u(2)^2;u(7)*u(3)^2; u(8)*u(4)^2];
@@ -165,11 +169,14 @@ g = max(0,g-lambda*gradF1);
 %% Iterate
 disp('Iterating... ' );
 %figure(1);
+trueIter=0;
 for iii = 1:iter
+    trueIter=trueIter+1;
     % Gradient for g again:
     i1 = 1:N; i2 = [N/2+1:N,1:N/2];
     for j=1:N
-        graddu(j) = g(i1(j))*g(i2(j))^2;
+        graddu(j) = g(i2(j));
+        %graddu(j) = g(i1(j))*g(i2(j))^2;
     end
     graddu = graddu(:);
     g = g(:);
@@ -192,13 +199,18 @@ for iii = 1:iter
     %disp(oldu);
     %disp(g);
     
-    rel_diff = norm(oldu-g)/norm(g);
-    if rel_diff < 0.000001
-
-    disp('pienempi kuin tolerance');
-    break;
-    
+    %Check if the error is as small as u want
+    BBM2=reshape(g(N/2+1:N),M,M);
+    err_BBM2 = norm(M2(:)-BBM2(:))/norm(M2(:));
+    if err_BBM2 < 0.27
+        disp('virhe alle 27!')
+        break;
     end
+    %rel_diff = norm(oldu-g)/norm(g);
+    %if rel_diff < 0.000001
+    %disp('pienempi kuin tolerance');
+    %break;
+    %end
 %     reco1=reshape(g(1:(N/2)),M,M);
 %     imshow(reco1,[]);
 %     reco2=reshape(g(N/2+1:N),M,M);
@@ -213,6 +225,7 @@ BBM2=reshape(g(N/2+1:N),M,M);
 % Here we calculated the square error separately for each phantom
 % Square Error in Tikhonov reconstruction 1
 err_BBM1 = norm(M1(:)-BBM1(:))/norm(M1(:));
+err_koe = norm(M1(:)-BBM1(:))/40
 disp(['Square norm relative error for first reconstruction: ', num2str(err_BBM1)]);
 % Square Error in Tikhonov reconstruction 2
 err_BBM2 = norm(M2(:)-BBM2(:))/norm(M2(:));
@@ -260,8 +273,8 @@ colormap gray;
 axis square;
 axis off;
 %title(['M2 BB reco2, iter=' num2str(K)]);
-title(['Relative error=' num2str(err_BBM2), ', \beta=' num2str(beta), ', iter=' num2str(iter)]);
+title(['Relative error=' num2str(err_BBM2), ', \beta=' num2str(beta), ', iter=' num2str(trueIter)]);
 toc
 
 % Save the result to disc 
-save('from_BB_Tik_with_matrix', 'M1', 'M2', 'BBM1', 'BBM2', 'err_BBM1', 'err_BBM2');
+save('from_BB_Tik_with_matrix', 'M1', 'M2', 'BBM1', 'BBM2', 'err_BBM1', 'err_BBM2', 'trueIter');
