@@ -14,11 +14,11 @@ tic
 % Choose the size of the unknown. The image has size NxN.
 N       = 40;
 % Regularization parameter
-alpha  = 10; %100             
-beta  = 5; %10000
+alpha  = 100; %100             
+beta  = 30; %10000
 % Choose relative noise level in simulated noisy data
 %noiselevel = 0.0001;
-iter = 900;
+iter = 60;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;

@@ -11,10 +11,10 @@ tic
 % Regularization parameter
 %alpha1  = 10;
 %alpha2  = 0.00001;
-alpha   = 10;
-beta    = 5;
+alpha   = 100;
+beta    = 70;
 N       = 40;
-iter    = 900;% maximum number of iterations
+iter    = 2000;% maximum number of iterations
 
 % Choose relative noise level in simulated noisy data
 %noiselevel = 0.0001;
@@ -103,8 +103,9 @@ a = A;
 % Simulate noisy measurements; here including inverse crime
 m = A2x2mult(a,c11,c12,c21,c22,g);
 %m=m/normest(m);%Ei toiminut, tuotti harmaan kuvan ja ison virheen
+noiselevel=0.001;
 % Add noise
-%m = m + noiselevel*max(abs(m(:)))*randn(size(m));
+m = m + noiselevel*max(abs(m(:)))*randn(size(m));
 
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
