@@ -40,9 +40,10 @@ M2=M2(:,:,1);
 %imshow(M1,[]);
 %figure(7);
 %imshow(M2,[]);
-% Combine
-%g       = [g1;g2];
-
+target=M1;
+target=max(target,0);
+figure(1);
+imshow(target,[]);
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
 % % function gives
@@ -90,76 +91,39 @@ res2 = c12*ag2;% c12*A*M2
 %res4 = c22*ag2(:);% c22*A*M2
 
 % Combine results
-%Energiaa 1 vastaava mittaus:
+%We need only low energy measurements
 m1 = res1+res2;
-%Energiaa 2 vastaava mittaus:
+%This would have been high energy measurement
 %m2 = res3 + res4;
-% valitaan tähän energian 1 mittaus mittausdataksemme:
+% Sinogram:
 mnc = reshape(m1,[61,65]);
-figure;
+figure(2);
 imshow(mnc,[]);
 %%
-%Tätä ei tarvita, koska tässä rekonstruoimme vain energiaa 1
-%m2 = res3+res4;
-% % Energy E1
-% m11 = c11*A*M1;
-% m21 = c21*A*M1;
-% %Energy E2
-% m12 = c12*A*M2;
-% m22 = c22*A*M2;
-% %%
-% % In the simulated measurement, we combine the measurements as follows
-% m1 = m11 + m12;
-% m2 = m21 + m22;
-%%
-% We combine the matrix A
-% Emme luo myöskään jättiläismatriisia, koska tämä on matriisivapaa
-% menetelmä!? Mutta tarvitsemmeko tällaisen yhdistetyn matriisin?
-%A = [c11*A c12*A];
-% Tätä funktioita emme voi käyttää, koska se on suunniteltu kahden kuvan
-% tapauskselle
-%mnc = A2x2mult(a,c11,c12,c21,c22,g);on jo laskettu
-% Se voidaan korvata Radonilla ja saadaan sinogrammi
-%Meidän täytyy laskea [c11*A c12*A]*g
 %noiselevel=0.001;
 % Add noise
 %mncn = mnc + noiselevel*max(abs(mnc(:)))*randn(size(mnc));
 
 % Maximum number of iterations. You can modify this number and observe the
 % consequences.
-K = 200;         
+K = 20;         
 
 % Regularization parameter
 alpha = 0.00001;
 
-% Load noisy measurements from disc. The measurements have been simulated
-% (avoiding inverse crime) in routine XRsparse3_NoCrimeData_comp.m
-%load XRsparse_NoCrime N mnc mncn measang target
-
 % Construct right hand side
-corxn = 7.65; % Incomprehensible correction factor
-% Perform the needed matrix multiplications. Now a.' multiplication has been
+corxn = 7.65; % Correction factor
+% Perform the needed matrix multiplications. Now A.' multiplication has been
 % switched to iradon
-am1 = iradon(mnc,ang,'none');
-am1 = am1(2:end-1,2:end-1);
-am1 = corxn*am1;
-b=am1;
-%am2 = iradon(m2,ang,'none');
-%am2 = am2(2:end-1,2:end-1);
-%am2 = corxn*am2;
-
-% Compute the parts of the result individually
-% res1 = c11*am1(:);
-% res2 = c21*am2(:);
-% res3 = c12*am1(:);
-% res4 = c22*am2(:);
-
-% Collect the results together
-%res = [res1 + res2; res3 + res4];
+b = iradon(mnc,ang,'none');
+b = b(2:end-1,2:end-1);
+b = corxn*b;
+figure(3);
+imshow(b,[]);
 
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-recn    = b;          % initial iterate is the backprojected data
+recn    = zeros(size(b));          % initial iterate is the backprojected data
 rho     = zeros(K,1); % initialize parameters
 
 % Compute residual using matrix-free implementation.
@@ -170,7 +134,7 @@ Hf     = corxn*Hf;
 Hf     = Hf + alpha*recn;
 r      = b-Hf;
 rho(1) = r(:).'*r(:);
-
+figure(4);
 % Start iteration
 for kkk = 1:(K-1)
     if kkk==1
@@ -191,17 +155,22 @@ for kkk = 1:(K-1)
     if mod(kkk,10)==0
         disp([kkk K])
     end
+    imshow(recn,[]);
+    pause(0.2);
 end
+recn=max(recn,0);
 %%
 % Save result to file
 %save XRsparseTikhonov recn alpha target
 
 % Show images of the results
 % Compute relative error
+target = target./max(max(target));
+recn = recn./max(max(recn));
 err_squ = norm(target(:)-recn(:))/norm(target(:));
 
 % Plot reconstruction image
-figure(1)
+figure(5)
 clf
 imagesc(recn);
 colormap gray

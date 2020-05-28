@@ -26,24 +26,27 @@ ang = angle0 + [0:(Nang-1)]/Nang*180;
 % Define attenuation coefficients: Iodine and PVC
 material1='PVC';
 material2='Iodine';
-%c11    = 42.2057; %Iodine 30kV
-c21    = 60.7376; %Iodine 50kV
-%c12    = 2.096346;%PVC 30kV
-c22    = 0.640995;%PVC 50kV
+c11    = 42.2057; %Iodine 30kV
+%c21    = 60.7376; %Iodine 50kV
+c12    = 2.096346;%PVC 30kV
+%c22    = 0.640995;%PVC 50kV
 
 % Construct phantom. You can modify the resolution parameter N.
 M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
 M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
+%figure(6);
+%imshow(M1,[]);
+%figure(7);
+%imshow(M2,[]);
+target=M1;
 figure(1);
-target=M2;
-%target=max(target,0);
 imshow(target,[]);
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
 % % function gives
-% target = M2;
+% target = M1;
 % P  = length(radon(target,0));
 % M  = length(ang);
 % A = sparse(M*P,N^2);
@@ -68,10 +71,10 @@ imshow(target,[]);
 % disp(['If this number is small, then the matrix A is OK: ', num2str(max(max(abs(Mtemp-Rtemp))))]);
 % 
 % % Save the result to file (with filename containing the resolution N)
-% eval(['save RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
-
-% Load radonMatrix
-eval(['load RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
+% eval(['save RadonMatrix', num2str(N), ' A ang target N P Nang']);
+% 
+% % Load radonMatrix
+eval(['load RadonMatrix', num2str(N), ' A ang target N P Nang']);
 
 % This function calculates multiplication A*g for system with two images
 % and two materials, without constructing the matrix A.
@@ -81,53 +84,45 @@ eval(['load RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
 ag1 = radon(M1,ang);
 ag2 = radon(M2,ang);
 % Calculate the parts needed for block matrix multiplication
-%res1 = c11*ag1;% c11*A*M1
-%res2 = c12*ag2;% c12*A*M2
-res3 = c21*ag1(:);% c21*A*M1
-res4 = c22*ag2(:);% c22*A*M2
+res1 = c11*ag1;% c11*A*M1
+res2 = c12*ag2;% c12*A*M2
+%res3 = c21*ag1(:);% c21*A*M1
+%res4 = c22*ag2(:);% c22*A*M2
 
 % Combine results
-%Energiaa 1 vastaava mittaus:
-%m1 = res1+res2;
-%mnc=res1;
-%Energiaa 2 vastaava mittaus:
-m2 = res3 + res4;
-% valitaan tähän energian 2 mittaus mittausdataksemme:
-mnc = reshape(m2,[61,65]);
+%We need only low energy measurements
+m1 = res1+res2;
+%This would have been high energy measurement
+%m2 = res3 + res4;
+% Sinogram:
+mnc = reshape(m1,[61,65]);
 figure(2);
 imshow(mnc,[]);
-
+%%
 %noiselevel=0.001;
 % Add noise
 %mncn = mnc + noiselevel*max(abs(mnc(:)))*randn(size(mnc));
 
 % Maximum number of iterations. You can modify this number and observe the
 % consequences.
-K = 20;         
+K = 200;         
 
 % Regularization parameter
-alpha = 0.01;
+alpha = 0.00001;
 
 % Construct right hand side
-corxn = 7.65; % Incomprehensible correction factor
+corxn = 7.65; % Correction factor
 % Perform the needed matrix multiplications. Now A.' multiplication has been
 % switched to iradon
 b = iradon(mnc,ang,'none');
 b = b(2:end-1,2:end-1);
 b = corxn*b;
-
-% Compute the parts of the result individually
-% res1 = c11*am1(:);
-% res2 = c21*am2(:);
-% res3 = c12*am1(:);
-% res4 = c22*am2(:);
-
-% Collect the results together
-%res = [res1 + res2; res3 + res4];
+figure(3);
+imshow(b,[]);
 
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-recn    = zeros(size(b));          % initial iterate is the backprojected data
+recn    = b;          % initial iterate is the backprojected data
 rho     = zeros(K,1); % initialize parameters
 
 % Compute residual using matrix-free implementation.
@@ -138,8 +133,7 @@ Hf     = corxn*Hf;
 Hf     = Hf + alpha*recn;
 r      = b-Hf;
 rho(1) = r(:).'*r(:);
-
-figure(3);
+figure(4);
 % Start iteration
 for kkk = 1:(K-1)
     if kkk==1
@@ -161,21 +155,18 @@ for kkk = 1:(K-1)
         disp([kkk K])
     end
     imshow(recn,[]);
-    pause(0.2);
+    pause(0,2);
 end
-recn=max(recn,0);
 %%
 % Save result to file
 %save XRsparseTikhonov recn alpha target
 
 % Show images of the results
-%Compute relative error
-target = target./max(max(target));
-recn = recn./max(max(recn));
+% Compute relative error
 err_squ = norm(target(:)-recn(:))/norm(target(:));
 
 % Plot reconstruction image
-figure(4);
+figure()
 clf
 imagesc(recn);
 colormap gray

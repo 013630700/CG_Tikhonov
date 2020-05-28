@@ -38,7 +38,6 @@ M1=M1(:,:,1);
 M2=M2(:,:,1);
 figure(1);
 target=M2;
-%target=max(target,0);
 imshow(target,[]);
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
@@ -163,7 +162,6 @@ for kkk = 1:(K-1)
     imshow(recn,[]);
     pause(0.2);
 end
-recn=max(recn,0);
 %%
 % Save result to file
 %save XRsparseTikhonov recn alpha target
@@ -175,7 +173,7 @@ recn = recn./max(max(recn));
 err_squ = norm(target(:)-recn(:))/norm(target(:));
 
 % Plot reconstruction image
-figure(4);
+figure(1)
 clf
 imagesc(recn);
 colormap gray
