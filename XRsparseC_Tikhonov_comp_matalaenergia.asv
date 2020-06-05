@@ -41,6 +41,7 @@ M2=M2(:,:,1);
 %figure(7);
 %imshow(M2,[]);
 target=M1;
+target=max(target,0);
 figure(1);
 imshow(target,[]);
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
@@ -81,8 +82,8 @@ eval(['load RadonMatrix', num2str(N), ' A ang target N P Nang']);
 
 % Perform the needed matrix multiplications. Now a matrix multiplication
 % has been switched to radon
-ag1 = radon(M1,ang);
-ag2 = radon(M2,ang);
+mL = radon(M1,ang)*c11 +;
+mH = radon(M2,ang);
 % Calculate the parts needed for block matrix multiplication
 res1 = c11*ag1;% c11*A*M1
 res2 = c12*ag2;% c12*A*M2
@@ -105,7 +106,7 @@ imshow(mnc,[]);
 
 % Maximum number of iterations. You can modify this number and observe the
 % consequences.
-K = 200;         
+K = 20;         
 
 % Regularization parameter
 alpha = 0.00001;
@@ -122,7 +123,7 @@ imshow(b,[]);
 
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-recn    = b;          % initial iterate is the backprojected data
+recn    = zeros(size(b));          % initial iterate is the backprojected data
 rho     = zeros(K,1); % initialize parameters
 
 % Compute residual using matrix-free implementation.
@@ -155,18 +156,21 @@ for kkk = 1:(K-1)
         disp([kkk K])
     end
     imshow(recn,[]);
-    pause(0,2);
+    pause(0.2);
 end
+recn=max(recn,0);
 %%
 % Save result to file
 %save XRsparseTikhonov recn alpha target
 
 % Show images of the results
 % Compute relative error
+target = target./max(max(target));
+recn = recn./max(max(recn));
 err_squ = norm(target(:)-recn(:))/norm(target(:));
 
 % Plot reconstruction image
-figure()
+figure(5)
 clf
 imagesc(recn);
 colormap gray

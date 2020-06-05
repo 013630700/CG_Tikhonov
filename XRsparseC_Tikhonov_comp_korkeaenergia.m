@@ -26,9 +26,9 @@ ang = angle0 + [0:(Nang-1)]/Nang*180;
 % Define attenuation coefficients: Iodine and PVC
 material1='PVC';
 material2='Iodine';
-%c11    = 42.2057; %Iodine 30kV
+c11    = 42.2057; %Iodine 30kV
 c21    = 60.7376; %Iodine 50kV
-%c12    = 2.096346;%PVC 30kV
+c12    = 2.096346;%PVC 30kV
 c22    = 0.640995;%PVC 50kV
 
 % Construct phantom. You can modify the resolution parameter N.
@@ -78,25 +78,15 @@ eval(['load RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
 
 % Perform the needed matrix multiplications. Now a matrix multiplication
 % has been switched to radon
-ag1 = radon(M1,ang);
-ag2 = radon(M2,ang);
-% Calculate the parts needed for block matrix multiplication
-%res1 = c11*ag1;% c11*A*M1
-%res2 = c12*ag2;% c12*A*M2
-res3 = c21*ag1(:);% c21*A*M1
-res4 = c22*ag2(:);% c22*A*M2
-
-% Combine results
-%Energiaa 1 vastaava mittaus:
-%m1 = res1+res2;
-%mnc=res1;
-%Energiaa 2 vastaava mittaus:
-m2 = res3 + res4;
+mL = c11*radon(M1,ang)+c12*radon(M2,ang);
+mH = c21*radon(M1,ang)+c22*radon(M2,ang);
 % valitaan tähän energian 2 mittaus mittausdataksemme:
-mnc = reshape(m2,[61,65]);
+mL = reshape(mL,[61,65]);
+mH = reshape(mH,[61,65]);
 figure(2);
-imshow(mnc,[]);
-
+imshow(mL,[]);
+figure(55);
+imshow(mL,[]);
 %noiselevel=0.001;
 % Add noise
 %mncn = mnc + noiselevel*max(abs(mnc(:)))*randn(size(mnc));
@@ -112,7 +102,7 @@ alpha = 0.01;
 corxn = 7.65; % Incomprehensible correction factor
 % Perform the needed matrix multiplications. Now A.' multiplication has been
 % switched to iradon
-b = iradon(mnc,ang,'none');
+b = iradon(mH,ang,'none');
 b = b(2:end-1,2:end-1);
 b = corxn*b;
 
@@ -127,15 +117,15 @@ b = corxn*b;
 
 % Solve the minimization problem using conjugate gradient method.
 % See Kelley: "Iterative Methods for Optimization", SIAM 1999, page 7.
-recn    = zeros(size(b));          % initial iterate is the backprojected data
+recnH    = zeros(size(b));          % initial iterate is the backprojected data
 rho     = zeros(K,1); % initialize parameters
 
 % Compute residual using matrix-free implementation.
-Hf     = radon(recn,ang);
+Hf     = radon(recnH,ang);
 Hf     = iradon(Hf,ang,'none');
 Hf     = Hf(2:end-1,2:end-1);
 Hf     = corxn*Hf;
-Hf     = Hf + alpha*recn;
+Hf     = Hf + alpha*recnH;
 r      = b-Hf;
 rho(1) = r(:).'*r(:);
 
@@ -154,16 +144,16 @@ for kkk = 1:(K-1)
     w          = corxn*w;
     w          = w + alpha*p;
     a          = rho(kkk)/(p(:).'*w(:));
-    recn       = recn + a*p;
+    recnH       = recnH + a*p;
     r          = r - a*w;
     rho(kkk+1) = r(:).'*r(:);
     if mod(kkk,10)==0
         disp([kkk K])
     end
-    imshow(recn,[]);
+    imshow(recnH,[]);
     pause(0.2);
 end
-recn=max(recn,0);
+recnH=max(recnH,0);
 %%
 % Save result to file
 %save XRsparseTikhonov recn alpha target
@@ -171,15 +161,20 @@ recn=max(recn,0);
 % Show images of the results
 %Compute relative error
 target = target./max(max(target));
-recn = recn./max(max(recn));
-err_squ = norm(target(:)-recn(:))/norm(target(:));
+recnH = recnH./max(max(recnH));
+err_squ = norm(target(:)-recnH(:))/norm(target(:));
 
 % Plot reconstruction image
 figure(4);
 clf
-imagesc(recn);
+imagesc(recnH);
 colormap gray
 axis equal
 axis off
 title(['Tikhonov: error ', num2str(round(err_squ*100)), '%'])
-%XRsparseC_Tikhonov_plot
+% XRsparseC_Tikhonov_plot
+imagesc(recnH);
+colormap jet;
+axis square;
+axis off;
+title({material2,'CG, matrixfree'});
