@@ -1,7 +1,7 @@
 %%%% MULTI ENERGY MATERIAL DECOMPOSITION CODE BARZILAI BORWEIN WITH NEW REGULARIZATION TERM %%%%
 % Here I replace the matrix multiplications by matrix free functions
 % Reconstruct two material phantom, imaged with two different energies, using Barzilai-Borwain
-% conjugate gradient method. Second regularization term added!
+% optimization method. Second regularization term added!
 clear all;
 % Measure computation time: start clocking here
 tic
@@ -9,21 +9,29 @@ tic
 % Choose the size of the unknown. The image has size MxM.
 M          = 40;
 % Adjust regularization parameters
-alpha1     = 100;             
-alpha2     = 100;
+alpha1     = 10;             
+alpha2     = 10;
 beta       = 85;
 % Adjust noise level and number of iterations
 %noiselevel = 0.0001;
-iter       = 3000;
+iter       = 2000;
 % Choose the angles for tomographic projections
 Nang       = 65; % odd number is preferred
 ang        = [0:(Nang-1)]*360/Nang;
 %% Define attenuation coefficients c_ij of the two materials
-% Iodine and PVC
-c11    = 42.2057; %Iodine 30kV
-c21    = 60.7376; %Iodine 50kV
-c12    = 2.096346;%PVC 30kV
-c22    = 0.640995;%PVC 50kV
+% % Iodine and PVC
+% c11    = 42.2057; %Iodine 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c12    = 2.096346;%PVC 30kV
+% c22    = 0.640995;%PVC 50kV
+
+% %Korjatut kertoimet
+%  material1='Iodine';
+%  material2='PVC';
+c11    = 1.7237;%PVC 30kV
+c12    = 37.57646; %Iodine 30kV
+c21    = 0.3686532;%PVC 50kV 
+c22    = 32.404; %Iodine 50kV
 
 % Iodine and Al
 % c11 = 42.2057; %Iodine 30kV
@@ -58,10 +66,8 @@ g  =[g1;g2];
 % Simulate measurements SINOGRAM
 m  = A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M);
 m_matrixfree=m;
-%g sisältää nyt molemmat kuvat dropattuna vektoreiksi. Mutta reali
-%mittauksessa meillä ei ole g:tä. Meillä on vain m. Sinogrammi. Tuleeko
-%siinä siis sitten olla molem
-
+%g sisältää nyt molemmat kuvat dropattuna vektoreiksi. Mutta reaali
+%mittauksessa meillä ei ole g:tä. Meillä on vain m eli sinogrammi.
 
 % Add noise
 %m  = m + noiselevel*max(abs(m(:)))*randn(size(m));
@@ -73,36 +79,37 @@ m_matrixfree=m;
 % and 
 %         b = A^T mn.
 % The positive constant alpha is the regularization parameter
-%b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang);
+b = A2x2Tmult_matrixfree(c11,c12,c21,c22,m,ang);
 %b_matrixfree=b;
 
-% Last revision Salla Latva-Äijö Sep 2019
-m1 = m(1:(end/2));
-m1 = reshape(m1, [length(m)/(2*length(ang)) length(ang)]);
-m2 = m((end/2+1):end);
-m2 = reshape(m2, [length(m)/(2*length(ang)) length(ang)]);
+% % Last revision Salla Latva-Äijö Sep 2019
+% m1 = m(1:(end/2));
+% m1 = reshape(m1, [length(m)/(2*length(ang)) length(ang)]);
+% m2 = m((end/2+1):end);
+% m2 = reshape(m2, [length(m)/(2*length(ang)) length(ang)]);
 
 corxn = 7.65; % Incomprehensible correction factor
 
-% Perform the needed matrix multiplications. Now a.' multiplication has been
-% switched to iradon
-am1 = iradon(m1,ang,'none');
-am1 = am1(2:end-1,2:end-1);
-am1 = corxn*am1;
+% % Perform the needed matrix multiplications. Now a.' multiplication has been
+% % switched to iradon
+% am1 = iradon(m1,ang,'none');
+% am1 = am1(2:end-1,2:end-1);
+% am1 = corxn*am1;
+% 
+% am2 = iradon(m2,ang,'none');
+% am2 = am2(2:end-1,2:end-1);
+% am2 = corxn*am2;
 
-am2 = iradon(m2,ang,'none');
-am2 = am2(2:end-1,2:end-1);
-am2 = corxn*am2;
+% % % Compute the parts of the result individually
+% % res1 = c11*am1(:);
+% % res2 = c21*am2(:);
+% % res3 = c12*am1(:);
+% % res4 = c22*am2(:);
 
-% Compute the parts of the result individually
-res1 = c11*am1(:);
-res2 = c21*am2(:);
-res3 = c12*am1(:);
-res4 = c22*am2(:);
-
-% Collect the results together
-res = [res1 + res2; res3 + res4];
-b=res;
+% % % Collect the results together
+% % res = [res1 + res2; res3 + res4];
+% % b=res;
+%%
 % Initialize g (the image vector containing both reconstuctions one after another)
 %old version: 
 g = zeros(2*M*M,1);
@@ -144,7 +151,7 @@ for iii = 1:iter
     oldgradF1 = gradF1;
     % Count new gradient
     %old version:gradF1 = 2*(A'*A)*g-2*A'*m+alpha1*2*g;%+alpha2*graddu;
-    gradF1 = 2*A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M),ang)-2*b+RegMat*g+beta*graddu;
+    gradF1 = 2*A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M),ang)-2*b+RegMat*sqrt(g)+beta*graddu;
     % Update the step size
     lambda = (g-oldu)'*(g-oldu)/((g-oldu)'*(gradF1-oldgradF1));
     oldu = g;
@@ -164,8 +171,7 @@ disp('Iteration ready!');
 BB1=reshape(g(1:(N/2)),M,M);
 BB2=reshape(g(N/2+1:N),M,M);
 
-% Here we calculated the error separately for each phantom
-% Square Error in Tikhonov reconstruction 1
+% Here we calculate the error separately for each phantom
 err_BB1 = norm(M1(:)-BB1(:))/norm(M1(:));
 disp(['Square norm relative error for first reconstruction: ', num2str(err_BB1)]);
 % Square Error in Tikhonov reconstruction 2
@@ -173,7 +179,6 @@ err_BB2 = norm(M2(:)-BB2(:))/norm(M2(:));
 disp(['Square norm relative error for second reconstruction: ', num2str(err_BB2)]);
 
 % Sup norm errors:
-% Sup error in reco1
 err_sup1 = max(max(abs(M1(:)-BB1(:))))/max(max(abs(BB1)));
 disp(['Sup relative error for first reconstruction: ', num2str(err_sup1)]);
 % Sup error in reco2
@@ -195,7 +200,7 @@ imagesc(BB1);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=', num2str(err_BB1), ', \alpha_1=', num2str(alpha1), ', \alpha_2=', num2str(alpha2)]);
+title(['Relative error1=', num2str(err_BB1), ', \alpha_1=', num2str(alpha1), ', \alpha_2=', num2str(alpha2)]);
 % Original M2
 subplot(2,2,3)
 imagesc(reshape(M2,M,M));
@@ -210,7 +215,7 @@ imagesc(BB2);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=' num2str(err_BB2), ', \beta=' num2str(beta), ', iter=' num2str(iter)]);
+title(['Relative error2=' num2str(err_BB2), ', \beta=' num2str(beta), ', iter=' num2str(iter)]);
 toc
 
 % Save the result to disc 

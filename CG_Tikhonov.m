@@ -10,12 +10,12 @@ tic
 
 % Regularization parameter
 alpha1  = 10;
-alpha2  = 0.00001;
+alpha2  = 6;
 N       = 40;
-iter    = 900;% maximum number of iterations
+iter    = 100;% maximum number of iterations
 
 % Choose relative noise level in simulated noisy data
-%noiselevel = 0.0001;
+noiselevel = 0.001;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;
@@ -35,12 +35,22 @@ c21    = 60.7376; %Iodine 50kV
 c12    = 2.096346;%PVC 30kV
 c22    = 0.640995;%PVC 50kV
 
+%Huonommin toimivat materiaalit?
+% material1='Iodine';
+% material2='bone';
+% c12    = 37.57646; %Iodine 30kV
+% c22    = 32.404; %Iodine 50kV
+% c11    = 2.0544;%Bone 30kV
+% c21    = 0.448512;%Bone 50kV
+
 % Construct phantom. You can modify the resolution parameter N.
 %M1 = imresize(double(imread('HY_Al.bmp')),[N N]);
 %M2=scale01(M2);
 %M2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
 M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
 M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
+%M1 = imresize(double(imread('selkaranka_phantom.jpg')), [N N]);
+%M2 = imresize(double(imread('selkaranka_phantom_nurin.jpg')), [N N]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
 
@@ -102,7 +112,7 @@ a = A;
 m = A2x2mult(a,c11,c12,c21,c22,g);
 %m=m/normest(m);%Ei toiminut, tuotti harmaan kuvan ja ison virheen
 % Add noise
-%m = m + noiselevel*max(abs(m(:)))*randn(size(m));
+m = m + noiselevel*max(abs(m(:)))*randn(size(m));
 
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
@@ -209,3 +219,215 @@ title(['Relative error=' num2str(err_CGM2), ', iter=' num2str(iter)]);
 
 % Save the result to disc 
 save('from_CG_Tik_with_matrix', 'CGM1', 'CGM2', 'err_CGM1', 'err_CGM2');
+
+% %% Level Set reconstruction of the image
+% %
+% %Load the data
+% %loadcommand = ['load cheese_NoCrime_', num2str(M), '_', num2str(Nang), ' A M n Nang angles'];
+% %eval(loadcommand)
+% 
+% tt = 1;
+% 
+% % initial guess for u
+% u = zeros(size(A,2)*tt,1);
+% ss = sqrt(size(u,1)/tt);
+% u=reshape(u, [ss,ss,tt]);
+% 
+% alpha = 5;
+% 
+% ht = 1;
+% 
+% % First iteration
+% graddu2 = [];
+% graddu2=(8+4/ht)*u-2*([u(2:end,:,:);zeros(1,ss,tt)]+[u(:,2:end,:),...
+% zeros(ss,1,tt)]+[zeros(1,ss,tt);u(1:end-1,:,:)]+[zeros(ss,1,tt),...
+% u(:,1:end-1,:)])-(2/ht)*(cat(3,u(:,:,2:end),zeros(ss,ss,1))+...
+% cat(3,zeros(ss,ss,1),u(:,:,1:end-1)));
+% disp('Creating gradient function...');
+% graddu2 = graddu2(:);
+% u = u(:);
+% 
+% % Build delta function
+% delta = 10^-1;
+% f_delta = @(tau) (tau>0).*sqrt(tau.^2+delta);
+% df_delta = @(tau) (tau>0).*tau./sqrt(tau.^2+delta);
+% u = u(:);
+% % Calculate the gradient fuction
+% gradF2 = 2*blkmulti(A',blkmulti(A,f_delta(u)))-2*blkmulti(A',m)+alpha*graddu2;
+% disp('Gradient function ready!');
+% 
+% lam = .0001;
+% 
+% oldu = u;
+% u = u-lam*gradF2;
+% 
+% %% Iterate
+% % Number of iterations 
+% iter = 50;
+% disp('Iterating... ' );
+% for l = 1:iter
+% graddu2 = [];
+% u = reshape(u,[ss,ss,tt]);
+% for ii = 1:ss
+%     for jj = 1:ss
+%         for kk = 1:tt
+%             
+%             if ii == ss
+%                 term1 = -1;
+%                 uusterm1 = -1;%?
+%             elseif ii == ss-1
+%                 term1 = u(ii+1,jj,kk);
+%                 uusterm1 = -1;
+%             else
+%                 term1 = u(ii+1,jj,kk);
+%                 uusterm1 = u(ii+2,jj,kk); % koska tässä lisätään riviin2, menee yli jos on viimeistä edellinen rivi
+%             end
+%             
+%             if jj == ss
+%                 term2 = -1;
+%                 uusterm2 = -1;%?
+%             elseif jj == ss-1
+%                 term2 = u(ii,jj+1,kk);
+%                 uusterm2 = -1;
+%             else
+%                 term2 = u(ii,jj+1,kk);
+%                 uusterm2 = u(ii,jj+2,kk);
+%             end
+%             
+%             if ii == 1
+%                 term3 = -1;
+%                 uusterm3 = -1;
+%             
+%             elseif ii == 2
+%                 term3 = u(ii-1,jj,kk);
+%                 uusterm3 = -1;
+%             else
+%                 term3 = u(ii-1,jj,kk);
+%                 uusterm3 = u(ii-2,jj,kk);
+%             end
+%             if jj == 1
+%                 term4 = -1;
+%                 uusterm4 = -1;
+%             elseif jj == 2
+%                 term4 = u(ii,jj-1,kk);
+%                 uusterm4 = -1;
+%             else
+%                 term4 = u(ii,jj-1,kk);
+%                 uusterm4 = u(ii,jj-2,kk);
+%             end
+%             
+%             
+%             if kk == tt
+%                 term5 = -1;
+%                 uusterm5 = -1;
+%             elseif kk == tt-1
+%                 term5 = u(ii,jj,kk+1);
+%                 uusterm5 = -1;
+%             else
+%                 term5 = u(ii,jj,kk+1);
+%                 uusterm5 = u(ii,jj,kk+2);
+%             end
+%             if kk == 1
+%                 term6 = -1;
+%                 uusterm6 = -1;
+%             elseif kk == 2
+%                 term6 = u(ii,jj,kk-1);
+%                 uusterm6 = -1;
+%             else
+%                 term6 = u(ii,jj,kk-1);
+%                 uusterm6 = u(ii,jj,kk-2);
+%             end
+%             
+%             
+%             if ii == ss
+%                 mixterm1 = -1;
+%             elseif jj == ss
+%                 mixterm1 = -1;
+%             else
+%                 mixterm1 = u(ii+1,jj+1,kk);
+%             end
+%             
+%             
+%             if ii == ss
+%                 mixterm2 = -1;
+%             elseif jj == 1
+%                 mixterm2 = -1;
+%             else 
+%                 mixterm2 = u(ii+1,jj-1,kk);
+%             end
+%             
+%             if ii ==1
+%                 mixterm3 = -1;
+%             elseif jj == ss
+%                 mixterm3 = -1;
+%             else
+%                 mixterm3 = u(ii-1,jj+1,kk);
+%             end
+%             
+%             if ii == 1
+%                 mixterm4 = -1;
+%             elseif jj == 1
+%                 mixterm4 = -1;
+%             else
+%                 mixterm4 = u(ii-1,jj-1,kk);
+%             end
+%                 
+%             graddu2(ii,jj,kk) = (40+16/ht^2)*u(ii,jj,kk)-...
+%                 14*(term1+term2+...
+%                 term3+term4)+...
+%                 2*(uusterm1+uusterm2+uusterm3+uusterm4)-...
+%                 (10/ht^2)*(term5+term6)+...
+%                 (2/ht^2)*(uusterm5+uusterm6)+2*(mixterm1+mixterm2+mixterm3+mixterm4);
+%         end
+%     end
+% end
+% graddu2 = graddu2(:);
+% u = u(:);
+%  
+% Df_delta = spdiags(df_delta(u),0,size(u,1),size(u,1));
+% oldgradF2 = gradF2;
+% %gradF2 = 2*A'*(A*u)-2*A'*m+alpha*graddu2;
+% %gradF2 = 2*(A'*(A*f_delta(u)))-2*(A'*m)+alpha*graddu2; % Tästäkö puuttuu
+% %Df_delta? näin: gradF2 =
+% %2*Df_delta*(A'*(A*f_delta(u)))-2*Df_delta*(A'*m)+alpha*graddu2; Kommentoin
+% %tämän pois
+% % Vaihdoin sen näin niin toimi näinkin:
+% gradF2 = 2*Df_delta*(A'*(A*f_delta(u)))-2*Df_delta*(A'*m)+alpha*graddu2;
+% lam = (u-oldu)'*(u-oldu)/((u-oldu)'*(gradF2-oldgradF2));
+% oldu = u;
+% %u = max(0,u-lam*gradF2);
+% u = u-lam*gradF2;
+% %fprintf('Iteraatiosarja 2...  \n');
+% disp([num2str(l),'/',num2str(iter)]);
+% % %% Show reconstruction
+% % u = reshape(u,[ss,ss,tt]);
+% % u_uusi = reshape(u,[ss,ss,tt]);
+% % u2 = f_delta(u);
+% % u_uusi2 = f_delta(u_uusi);
+% % for ii = 1:tt
+% % figure(1);
+% % imagesc(u2(:,:,ii));
+% % %imagesc(u_uusi2(:,:,ii));
+% % title(['Frame ',num2str(l)]);
+% % axis square;
+% % colormap jet; 
+% % %colormap gray
+% % colorbar
+% % %pause(0.5);
+% % pause;
+% % end
+% end
+% %% Show reconstruction
+% u = reshape(u,[ss,ss,tt]);
+% u2 = f_delta(u);
+% for ii = 1:tt
+% figure(1);
+% imagesc(u2(:,:,ii));
+% title(['Frame ',num2str(ii)]);
+% axis square;
+% colormap jet; 
+% %colormap gray
+% colorbar
+% pause(0.1);
+% %pause;
+% end

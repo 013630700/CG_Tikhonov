@@ -14,7 +14,7 @@
 % Jennifer Mueller and Samuli Siltanen, October 2012
 % Modified by Salla 2020
 clear all;
-N       = 40;
+N       = 128;
 
 % Choose relative noise level in simulated noisy data
 %noiselevel = 0.0001;
@@ -24,19 +24,33 @@ angle0  = -90;
 ang = angle0 + [0:(Nang-1)]/Nang*180;
 
 % Define attenuation coefficients: Iodine and PVC
-material1='PVC';
-material2='Iodine';
-c11    = 42.2057; %Iodine 30kV
-c21    = 60.7376; %Iodine 50kV
-c12    = 2.096346;%PVC 30kV
-c22    = 0.640995;%PVC 50kV
+% material1='PVC';
+% material2='Iodine';
+% c11    = 42.2057; %Iodine 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c12    = 2.096346;%PVC 30kV
+% c22    = 0.640995;%PVC 50kV
+
+%c11 = 1.7237;%PVC 30kV
+%c12 = 37.57646; %Iodine 30kV
+c21 = 0.3686532;%PVC 50kV
+c22 = 32.404; %Iodine 50kV
+
+%material1='Iodine';
+%material2='bone';
+%c12    = 37.57646; %Iodine 30kV
+%c22    = 32.404; %Iodine 50kV
+%c11    = 2.0544;%Bone 30kV
+%c21    = 0.448512;%Bone 50kV
 
 % Construct phantom. You can modify the resolution parameter N.
 M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
 M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
+%M1 = imresize(double(imread('selkaranka_phantom.jpg')), [N N]);
+%M2 = imresize(double(imread('selkaranka_phantom_nurin.jpg')), [N N]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
-figure(1);
+figure(6);
 target=M2;
 %target=max(target,0);
 imshow(target,[]);
@@ -71,22 +85,18 @@ imshow(target,[]);
 % eval(['save RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
 
 % Load radonMatrix
-eval(['load RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
+%eval(['load RadonMatrixE2', num2str(N), ' A ang target N P Nang']);
 
 % This function calculates multiplication A*g for system with two images
 % and two materials, without constructing the matrix A.
 
 % Perform the needed matrix multiplications. Now a matrix multiplication
 % has been switched to radon
-mL = c11*radon(M1,ang)+c12*radon(M2,ang);
+%mL = c11*radon(M1,ang)+c12*radon(M2,ang);
 mH = c21*radon(M1,ang)+c22*radon(M2,ang);
 % valitaan tähän energian 2 mittaus mittausdataksemme:
-mL = reshape(mL,[61,65]);
-mH = reshape(mH,[61,65]);
-figure(2);
-imshow(mL,[]);
-figure(55);
-imshow(mL,[]);
+mH = reshape(mH,[length(radon(target,0)),Nang]);
+
 %noiselevel=0.001;
 % Add noise
 %mncn = mnc + noiselevel*max(abs(mnc(:)))*randn(size(mnc));
@@ -96,7 +106,7 @@ imshow(mL,[]);
 K = 20;         
 
 % Regularization parameter
-alpha = 0.01;
+alpha = 10;
 
 % Construct right hand side
 corxn = 7.65; % Incomprehensible correction factor
@@ -105,7 +115,8 @@ corxn = 7.65; % Incomprehensible correction factor
 b = iradon(mH,ang,'none');
 b = b(2:end-1,2:end-1);
 b = corxn*b;
-
+figure(7);
+imshow(b,[])
 % Compute the parts of the result individually
 % res1 = c11*am1(:);
 % res2 = c21*am2(:);
@@ -129,7 +140,7 @@ Hf     = Hf + alpha*recnH;
 r      = b-Hf;
 rho(1) = r(:).'*r(:);
 
-figure(3);
+%figure(8);
 % Start iteration
 for kkk = 1:(K-1)
     if kkk==1
@@ -150,8 +161,8 @@ for kkk = 1:(K-1)
     if mod(kkk,10)==0
         disp([kkk K])
     end
-    imshow(recnH,[]);
-    pause(0.2);
+    %imshow(recnH,[]);
+    %pause(0.2);
 end
 recnH=max(recnH,0);
 %%
@@ -165,7 +176,7 @@ recnH = recnH./max(max(recnH));
 err_squ = norm(target(:)-recnH(:))/norm(target(:));
 
 % Plot reconstruction image
-figure(4);
+figure(9);
 clf
 imagesc(recnH);
 colormap gray
@@ -174,7 +185,7 @@ axis off
 title(['Tikhonov: error ', num2str(round(err_squ*100)), '%'])
 % XRsparseC_Tikhonov_plot
 imagesc(recnH);
-colormap jet;
+colormap gray;
 axis square;
 axis off;
-title({material2,'CG, matrixfree'});
+title({'High energy CG, Iodine in PVC, matrixfree, error ' num2str(round(err_squ*100)),'%'});

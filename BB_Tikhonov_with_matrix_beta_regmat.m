@@ -2,7 +2,7 @@
 %
 % Reconstruct two material phantom, imaged with two different energies, using Barzilai-Borwain
 % conjugate gradient method. Second regularization term (beta) added!
-%clear all;
+clear all;
 % Measure computation time, start clocking here
 tic
 %% Choices for the user
@@ -15,16 +15,24 @@ beta    = 85;
 % Choose relative noise level in simulated noisy data
 %noiselevel = 0.0001;
 % Choose number of iterations
-iter    = 9000;
+iter    = 3000;
 % Choose the angles for tomographic projections
 Nang    = 65; % odd number is preferred
 ang     = [0:(Nang-1)]*360/Nang;
 %% Define attenuation coefficients c_ij of the two materials
 % Iodine and PVC
-c11    = 42.2057; %Iodine 30kV
-c21    = 60.7376; %Iodine 50kV
-c12    = 2.096346;%PVC 30kV
-c22    = 0.640995;%PVC 50kV
+% c11    = 42.2057; %Iodine 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c12    = 2.096346;%PVC 30kV
+% c22    = 0.640995;%PVC 50kV
+
+% %Korjatut kertoimet
+%  material1='Iodine';
+%  material2='PVC';
+c11    = 1.7237;%PVC 30kV
+c12    = 37.57646; %Iodine 30kV
+c21    = 0.3686532;%PVC 50kV 
+c22    = 32.404; %Iodine 50kV
 
 % Iodine and Al
 % c11 = 42.2057; %Iodine 30kV
@@ -181,9 +189,9 @@ for iii = 1:iter
     graddu = graddu(:);
     g = g(:);
     oldgradF1 = gradF1;
-    % Count new gradient
+    % Count new gradA2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g))ient
     %old version:gradF1 = 2*(A'*A)*g-2*A'*m+alpha1*2*g;%+alpha2*graddu;
-    gradF1 = 2*A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g))-2*b+RegMat*2*g+beta*graddu;
+    gradF1 = 2*-2*b+RegMat*2*g+beta*graddu;
     % for historical reasons, we have this line here remembering how this
     % was before the second regularization term
     %gradF1 = 2*(A'*A)*u-2*A'*m+alpha*graddu;
@@ -193,19 +201,20 @@ for iii = 1:iter
     oldu = g;
     g = max(0,g-lambda*gradF1);
     % Show how the iterations proceed
-    if mod(iii,10)==0
+    if mod(iii,100)==0
         disp([num2str(iii),'/' num2str(iter)]);
     end
     %disp(oldu);
     %disp(g);
     
-    %Check if the error is as small as u want
-    BBM2=reshape(g(N/2+1:N),M,M);
-    err_BBM2 = norm(M2(:)-BBM2(:))/norm(M2(:));
-    if err_BBM2 < 0.27
-        disp('virhe alle 27!')
-        break;
-    end
+% %     %Check if the error is as small as u want
+% %     BBM2=reshape(g(N/2+1:N),M,M);
+% %     err_BBM2 = norm(M2(:)-BBM2(:))/norm(M2(:));
+% %     if err_BBM2 < 0.27
+% %         disp('virhe alle 27!')
+% %         break;
+% %     end
+    
     %rel_diff = norm(oldu-g)/norm(g);
     %if rel_diff < 0.000001
     %disp('pienempi kuin tolerance');

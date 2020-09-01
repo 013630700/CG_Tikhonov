@@ -14,11 +14,11 @@ tic
 % Choose the size of the unknown. The image has size NxN.
 N       = 40;
 % Regularization parameter
-alpha  = 100; %100             
-beta  = 30; %10000
+alpha  = 80; %100             
+beta  = 50;%150; %10000
 % Choose relative noise level in simulated noisy data
-%noiselevel = 0.0001;
-iter = 60;
+noiselevel = 0.001;
+iter = 42;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;
@@ -33,17 +33,41 @@ ang     = angle0 + [0:(Nang-1)]/Nang*180;
 % c22    = 0.994;   %Al 50kV
 
 % Define attenuation coefficients: Iodine and PVC
-material1='PVC';
-material2='Iodine';
+%  material1='Iodine';
+%  material2='PVC';
 c11    = 42.2057; %Iodine 30kV
 c21    = 60.7376; %Iodine 50kV
 c12    = 2.096346;%PVC 30kV
 c22    = 0.640995;%PVC 50kV
+
+% % %Korjatut kertoimet
+% %  material1='Iodine';
+% %  material2='PVC';
+% c11    = 1.7237;%PVC 30kV
+% c12    = 37.57646; %Iodine 30kV
+% c21    = 0.3686532;%PVC 50kV 
+% c22    = 32.404; %Iodine 50kV
+
+% % Viel‰ kerran korjatutu kertoimet t‰ss‰ ei siis kerrottu tiheydell‰
+% c11    = 1.491; %PVC 30 30kV
+% c12    = 8.561; %Iodine 30kV
+% c21    = 0.08981; %PVC 50kV
+% c22    = 12.32;   % Iodine 50kV
+
+%Huonommin toimivat materiaalit?
+% material1='Iodine';
+% material2='bone';
+% c12    = 37.57646; %Iodine 30kV
+% c22    = 32.404; %Iodine 50kV
+% c11    = 2.0544;%Bone 30kV
+% c21    = 0.448512;%Bone 50kV
 %% Construct phantom. You can modify the resolution parameter N.
 %g1     = imresize(double(imread('HY_Al.bmp')),[N N]);
 %g2     = imresize(double(imread('HY_square_inv.jpg')),[N N]);
 M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
 M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
+%M1 = imresize(double(imread('selkaranka_phantom.jpg')), [N N]);
+%M2 = imresize(double(imread('selkaranka_phantom_nurin.jpg')), [N N]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
 % 
@@ -63,8 +87,10 @@ g      = [g1(:);g2(:)];
 %% Start reconstruction
 % Simulate noisy measurements
 m       = A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N); 
-% Add noise
-%m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
+% Add noise/poisson noise
+m  = m + noiselevel*max(abs(m(:)))*randn(size(m));
+% m = imnoise(m,'poisson');
+% m       = m + noiselevel*max(abs(m(:)))*randn(size(m));
 
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
@@ -89,7 +115,14 @@ rho = zeros(iter,1); % initialize parameters
 
 
 %***New Q2!****
-Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)];
+% Q_2tehd‰‰n luomalla ihan tavallisen matriisin M = [alpha, beta; beta, alpha]
+% ja sitten ottamalla ns. Kronecker tulon opEye:n kanssa, jolloin jokainen M:n
+% alkio kerrotaan tolla opEye:ll‰ ja siit‰ tulee se sama block matrix
+pMatrix = [alpha, beta; beta, alpha];
+opMatrix = opEye(N^2);
+Q2 = kron(pMatrix,opMatrix);
+%Q2 = [alpha*opEye(N^2),beta*opEye(N^2);beta*opEye(N^2),alpha*opEye(N^2)];
+%Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)];
 %Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
 Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N),ang) + Q2*g(:);
 
@@ -121,6 +154,20 @@ for kkk = 1:iter
 
   %recn1 = reshape(g(1:(end/2),1:end),N,N);
   %imshow(recn1,[]);
+  
+  %Check if the error is as small enough
+  CG1 = reshape(g(1:(end/2),1:end),N,N);
+  CG2 = reshape(g((end/2)+1:end,1:end),N,N);
+  err_CG1 = norm(M1(:)-CG1(:))/norm(M1(:));
+  err_CG2 = norm(M2(:)-CG2(:))/norm(M2(:));
+  err_total = (err_CG1+err_CG2)/2;
+      format short e
+    % Monitor the run
+    disp(['Iteration ', num2str(kkk,'%4d'),', total error value ',num2str(err_total)])
+    if err_total < 1*10^-6
+        disp('virhe alle kohinan!')
+        break;
+    end
 end
 CG1 = reshape(g(1:(end/2),1:end),N,N);
 CG2 = reshape(g((end/2)+1:end,1:end),N,N);
@@ -134,12 +181,13 @@ comptime = toc;
 %% Compute the error
 % Square error of reconstruction 1:
 %err_sup1 = max(max(abs(g1-recn1)))/max(max(abs(g1)));
-err_CG1 = norm(g1(:)-CG1(:))/norm(g1(:));
+err_CG1 = norm(M1(:)-CG1(:))/norm(M1(:));
 % Target 2
 %err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
-err_CG2 = norm(g2(:)-CG2(:))/norm(g2(:));
-
-%% Take a look at the results
+err_CG2 = norm(M2(:)-CG2(:))/norm(M2(:));
+% Yhteisvirhe keskiarvona molempien virheest‰
+err_total = (err_CG1+err_CG2)/2
+% Take a look at the results
 figure(4);
 % Original phantom1
 subplot(2,2,1);
@@ -147,28 +195,40 @@ imagesc(reshape(g1,N,N));
 colormap gray;
 axis square;
 axis off;
-title({material1,' Phantom1, matrixfree'});
+title({'Phantom1, matrixfree'});
 % Reconstruction of phantom1
 subplot(2,2,2)
 imagesc(CG1);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=', num2str(err_CG1), ', \alpha=', num2str(alpha), ', \beta=', num2str(beta)]);
+title(['Approximate error ', num2str(round(err_CG1*100,1)), '%, \alpha=', num2str(alpha), ', \beta=', num2str(beta)]);
 % Original target2
 subplot(2,2,3)
 imagesc(reshape(g2,N,N));
 colormap gray;
 axis square;
 axis off;
-title({material2,'Phantom2, matrixfree'});
+title({'Phantom2, matrixfree'});
 % Reconstruction of target2
 subplot(2,2,4)
 imagesc(CG2);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=' num2str(err_CG2), ', iter=' num2str(iter)]);
+title(['Approximate error ' num2str(round(err_CG2*100,1)), '%, iter=' num2str(iter)]);
+figure(560)
+imagesc(reshape(CG1,N,N));
+colormap gray;
+axis square;
+axis off;
+title({'PVC, matrixfree, error ' num2str(round(err_CG1*100,1)) '%'});
+figure(561);
+imagesc(reshape(CG2,N,N));
+colormap gray;
+axis square;
+axis off;
+title({'Iodine, matrixfree, error ' num2str(round(err_CG2*100,1)) '%'});
 %%
 % figure(6);
 % % Original phantom1
@@ -203,4 +263,4 @@ title(['Relative error=' num2str(err_CG2), ', iter=' num2str(iter)]);
 % title(['Relative error=' num2str(err_squ2), ', \alpha_2=' num2str(alpha2)]);
 toc
 % Save the result to disc 
-save('from_CG_Tik_matrixfree', 'CG1', 'CG2', 'err_CG1', 'err_CG2');
+%save('from_CG_Tik_matrixfree', 'CG1', 'CG2', 'err_CG1', 'err_CG2');

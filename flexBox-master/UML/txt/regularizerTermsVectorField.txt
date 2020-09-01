@@ -1,0 +1,26 @@
+Regularizer Terms (vector field)
+#terms
+basicTerm.m
+basicDualizedOperator.m
+basicCurl.m
+basicDivAnticurl.m
+basicDivCurl.m
+basicDivergence.m
+basicShear.m
+L1curl.m
+L1curlPlus.m
+L1curlSwitched.m
+L1divAnticurlIso.m
+L1divCurlIso.m
+L1divergence.m
+L1shearAniso.m
+L1shearIso.m
+L2curl.m
+L2divergence.m
+L2shear.m
+
+#proxs
+basicProx.m
+L1AnisoProxDual.m
+L1IsoProxDual.m
+L2proxDual.m
