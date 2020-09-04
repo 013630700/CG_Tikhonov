@@ -27,14 +27,14 @@ ang = angle0 + [0:(Nang-1)]/Nang*180;
 % material1='PVC';
 % material2='Iodine';
 % c11    = 42.2057; %Iodine 30kV
-% c21    = 60.7376; %Iodine 50kV
+c22    = 60.7376; %Iodine 50kV
 % c12    = 2.096346;%PVC 30kV
-% c22    = 0.640995;%PVC 50kV
+c21    = 0.640995;%PVC 50kV
 
 %c11 = 1.7237;%PVC 30kV
 %c12 = 37.57646; %Iodine 30kV
-c21 = 0.3686532;%PVC 50kV
-c22 = 32.404; %Iodine 50kV
+% c21 = 0.3686532;%PVC 50kV
+% c22 = 32.404; %Iodine 50kV
 
 %material1='Iodine';
 %material2='bone';
@@ -183,6 +183,18 @@ colormap gray
 axis equal
 axis off
 title(['Tikhonov: error ', num2str(round(err_squ*100)), '%'])
+
+% Save to disk
+originalImage = recnH;
+outputBaseFileName = 'HighEnergyTikRecon.PNG';
+imwrite(originalImage, outputBaseFileName);
+% Recall from disk:
+recalledImage = imread(outputBaseFileName);
+figure(8)
+imshow(recalledImage);
+fontSize=15;
+title('Recalled Image', 'FontSize', fontSize);
+
 % XRsparseC_Tikhonov_plot
 imagesc(recnH);
 colormap gray;

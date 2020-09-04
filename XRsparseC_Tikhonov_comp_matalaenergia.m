@@ -29,8 +29,8 @@ noiselevel = 0.01;
 % material1='PVC';
 % material2='Iodine';
 % Low energy measurements:
-c11    = 42.2057; %Iodine 30kV
-c12    = 2.096346;%PVC 30kV
+c11    = 2.096346;%PVC 30kV
+c12    = 42.2057; %Iodine 30kV
 % High energy measurements
 % c21    = 60.7376; %Iodine 50kV
 % c22    = 0.640995;%PVC 50kV
@@ -46,7 +46,7 @@ M2=M2(:,:,1);
 %imshow(M1,[]);
 %figure(7);
 %imshow(M2,[]);
-target=M1;
+target=M1; %%%HEI MIKSI TÄSSÄ ON TARGET M1, aiheuttaako ongelmaa?
 %target=max(target,0);
 %figure(1);
 %imshow(target,[]);
@@ -89,7 +89,7 @@ target=M1;
 % Perform the needed matrix multiplications. Now a matrix multiplication
 % has been switched to radon
 m11 = c11*radon(M1,ang);
-m21 = c12*radon(M2,ang);
+m12 = c12*radon(M2,ang);
 mL = c11*radon(M1,ang)+c12*radon(M2,ang);
 
 % Sinogram:
@@ -172,10 +172,10 @@ imagesc(recnL);
 colormap gray
 axis equal
 axis off
-title(['Tikhonov: error ', num2str(round(err_squ*100)), '%'])
+title(['Tikhonov recnL: error ', num2str(round(err_squ*100)), '%'])
 % Save to disk
 originalImage = recnL;
-outputBaseFileName = 'lowenergyTikRecon.PNG';
+outputBaseFileName = 'lowEnergyTikRecon.PNG';
 imwrite(originalImage, outputBaseFileName);
 % Recall from disk:
 recalledImage = imread(outputBaseFileName);

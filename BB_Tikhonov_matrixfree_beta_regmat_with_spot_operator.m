@@ -14,7 +14,7 @@ alpha2     = 10;
 beta       = 85;
 % Adjust noise level and number of iterations
 noiselevel = 0.01;
-iter       = 116;
+iter       = 162;
 % Choose the angles for tomographic projections
 Nang       = 65; % odd number is preferred
 ang        = [0:(Nang-1)]*360/Nang;
@@ -133,7 +133,10 @@ end
 disp('Creating gradient function...');
 graddu = graddu(:);
 % Set different regularization parameters alpha1 and alpha2 for the images
-RegMat = [alpha1*eye(M^2),zeros(M^2);zeros(M^2),alpha2*eye(M^2)];
+%Tehd‰‰n eye matriisi
+opMatrix = opEye(M^2);
+zeroMatrix = opZeros(M^2);
+RegMat = [alpha1*opMatrix,zeroMatrix;zeroMatrix,alpha2*opMatrix];
 gradF1 = 2*A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M),ang)-2*b+RegMat*g+beta*graddu;
 disp('Gradient function F1 ready!');
 %% Decide the first step size

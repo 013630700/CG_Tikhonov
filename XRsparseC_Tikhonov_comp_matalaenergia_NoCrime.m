@@ -14,39 +14,36 @@
 % Jennifer Mueller and Samuli Siltanen, October 2012
 % Modified by Salla 2020
 clear all;
-N       = 512;
 
-% Choose relative noise level in simulated noisy data
-%noiselevel = 0.0001;
-% Choose measurement angles (given in degrees, not radians). 
-Nang    = 65; 
-angle0  = -90;
-ang = angle0 + [0:(Nang-1)]/Nang*180;
-noiselevel = 0.01;
+% Load noisy measurements from disc. The measurements have been simulated
+% (avoiding inverse crime) in routine XRsparseA_NoCrimeData_comp.m
+load XRsparse_NoCrime_PVC N PVCmnc PVCmncn measang PVC
+load XRsparse_NoCrime_Iodine N Iodine_mnc Iodine_mncn measang Iodineclear all;
 
 % Define attenuation coefficients: Iodine and PVC
 %Fisrst index is energy and secons index refers to material
 % material1='PVC';
 % material2='Iodine';
 % Low energy measurements:
-c11    = 42.2057; %Iodine 30kV
-c12    = 2.096346;%PVC 30kV
-% High energy measurements
-% c21    = 60.7376; %Iodine 50kV
-% c22    = 0.640995;%PVC 50kV
+% c11    = 2.096346;%PVC 30kV
+% c12    = 42.2057; %Iodine 30kV
+
+%Coefficients divided by density
+c11    = 1.491; %PVC 30kV
+c12    = 8.561; %Iodine 30kV
 
 % Construct phantom. You can modify the resolution parameter N.
-M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
-M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
+%M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
+%M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
 %M1 = imresize(double(imread('selkaranka_phantom.jpg')), [N N]);
 %M2 = imresize(double(imread('selkaranka_phantom_nurin.jpg')), [N N]);
-M1=M1(:,:,1);
-M2=M2(:,:,1);
+%M1=M1(:,:,1);
+%M2=M2(:,:,1);
 %figure(6);
 %imshow(M1,[]);
 %figure(7);
 %imshow(M2,[]);
-target=M1;
+%target=M1; %%%HEI MIKSI TÄSSÄ ON TARGET M1, aiheuttaako ongelmaa?
 %target=max(target,0);
 %figure(1);
 %imshow(target,[]);
@@ -87,20 +84,15 @@ target=M1;
 % and two materials, without constructing the matrix A.
 
 % Perform the needed matrix multiplications. Now a matrix multiplication
-% has been switched to radon
-m11 = c11*radon(M1,ang);
-m21 = c12*radon(M2,ang);
-mL = c11*radon(M1,ang)+c12*radon(M2,ang);
+% Perform the needed matrix multiplications
+m11 = c11*PVCmncn;
+m12 = c12*Iodine_mncn;
+mL  = m11+m12;
 
 % Sinogram:
-mnc = reshape(mL,[length(radon(target,0)),Nang]);
 %figure(2);
-%imshow(mnc,[]);
+%imshow(mncn,[]);
 %%
-%noiselevel=0.001;
-% Add noise
-%mncn = mnc + noiselevel*max(abs(mnc(:)))*randn(size(mnc));
-
 % Maximum number of iterations. You can modify this number and observe the
 % consequences.
 K = 20;         
@@ -112,7 +104,7 @@ alpha = 10;
 corxn = 7.65; % Correction factor
 % Perform the needed matrix multiplications. Now A.' multiplication has been
 % switched to iradon
-b = iradon(mnc,ang,'none');
+b = iradon(mL,measang,'none');
 b = b(2:end-1,2:end-1);
 b = corxn*b;
 %figure(3);
@@ -124,8 +116,8 @@ recnL    = zeros(size(b));          % initial iterate is the backprojected data
 rho     = zeros(K,1); % initialize parameters
 
 % Compute residual using matrix-free implementation.
-Hf     = radon(recnL,ang);
-Hf     = iradon(Hf,ang,'none');
+Hf     = radon(recnL,measang);
+Hf     = iradon(Hf,measang,'none');
 Hf     = Hf(2:end-1,2:end-1);
 Hf     = corxn*Hf;
 Hf     = Hf + alpha*recnL;
@@ -140,8 +132,8 @@ for kkk = 1:(K-1)
         beta = rho(kkk)/rho(kkk-1);
         p    = r + beta*p;
     end
-    w          = radon(p,ang);
-    w          = iradon(w,ang,'none');
+    w          = radon(p,measang);
+    w          = iradon(w,measang,'none');
     w          = w(2:end-1,2:end-1);
     w          = corxn*w;
     w          = w + alpha*p;
@@ -155,33 +147,35 @@ for kkk = 1:(K-1)
     %imshow(recnL,[]);
     %pause(0.2);
 end
-recnL=max(recnL,0);
+%recnL=max(recnL,0);
 %%
 % Save result to file
 %save XRsparseTikhonov recn alpha target
 
 % Show images of the results
 % Compute relative error
-target = target./max(max(target));
-recnL = recnL./max(max(recnL));
-err_squ = norm(target(:)-recnL(:))/norm(target(:));
+% target = target./max(max(target));
+% recnL = recnL./max(max(recnL));
+% err_squ = norm(target(:)-recnL(:))/norm(target(:));
 
 % Plot reconstruction image
 figure(5)
 clf
-imagesc(recnL);
+imagesc(recnL,[0,1]);
 colormap gray
 axis equal
 axis off
-title(['Tikhonov: error ', num2str(round(err_squ*100)), '%'])
+title('Tikhonov recn low energy')
+%title(['Tikhonov recnL: error ', num2str(round(err_squ*100)), '%'])
 % Save to disk
 originalImage = recnL;
-outputBaseFileName = 'lowenergyTikRecon.PNG';
+outputBaseFileName = 'lowEnergyTikRecon.PNG';
 imwrite(originalImage, outputBaseFileName);
 % Recall from disk:
 recalledImage = imread(outputBaseFileName);
 figure(8)
 imshow(recalledImage);
+fontSize=15;
 title('Recalled Image', 'FontSize', fontSize);
 %XRsparseC_Tikhonov_plot
 figure(6)

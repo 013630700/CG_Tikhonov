@@ -1,4 +1,4 @@
-% Example computations related to X-ray tomography. Here we apply Tikhonov 
+% Example computations related to X-ray tomography. Here we apply Generalized Tikhonov 
 % regularization and solve the normal equations using the conjugate 
 % gradient method. The approach uses sparse matrix A and is much more
 % efficient computationally than the singular value decomposition approach.
@@ -9,13 +9,12 @@ clear all;
 tic
 
 % Regularization parameter
-alpha1  = 10;%10;
-alpha2  = 6;%6;
+alpha  = 10;%10;
 N       = 40;
-iter    = 400;% maximum number of iterations
+iter    = 100;% maximum number of iterations
 
 % Choose relative noise level in simulated noisy data
-noiselevel = 0.001;
+noiselevel = 0.01;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;
@@ -30,11 +29,16 @@ ang = angle0 + [0:(Nang-1)]/Nang*180;
 % Define attenuation coefficients: Iodine and PVC
 material1='PVC';
 material2='Iodine';
-c11    = 42.2057; %Iodine 30kV
-c21    = 60.7376; %Iodine 50kV
-c12    = 2.096346;%PVC 30kV
-c22    = 0.640995;%PVC 50kV
+% c11    = 42.2057; %Iodine 30kV
+% c12    = 2.096346;%PVC 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c22    = 0.640995;%PVC 50kV
 
+%Hyv‰t kertoimet:
+c11    = 1.491; %PVC 30 30kV
+c12    = 8.561; %Iodine 30kV
+c21    = 0.456; %PVC 50kV
+c22    = 12.32;   % Iodine 50kV
 %Huonommin toimivat materiaalit?
 % material1='Iodine';
 % material2='bone';
@@ -54,26 +58,13 @@ M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
 
-% % Try to normalize the image between 0 and 255
-% min1=min(min(M1));
-% max1=max(max(M1));
-% M1 = double(255 .* ((double(M1)-double(min1))) ./ double(max1-min1));
-% 
-% min1=min(min(M2));
-% max1=max(max(M2));
-% M2 = double(255 .* ((double(M2)-double(min1))) ./ double(max1-min1));
-
-%M1=scale01(M1);
-%Take away negative pixels
-%M1 = max(M1,0);
-%M2 = max(M2,0);
-
 % Vektorize
 g1      = M1(:);
 g2      = M2(:);
+
 % Combine
 g       = [g1;g2];
-%g=g/normest(g);%Taas harmaa kuva
+
 % % Initialize measurement matrix of size (M*P) x N^2, where M is the number of
 % % X-ray directions and P is the number of pixels that Matlab's Radon
 % % function gives.
@@ -107,12 +98,12 @@ g       = [g1;g2];
 % Load radonMatrix
 eval(['load RadonMatrix', num2str(N), ' A ang target N P Nang']);
 a = A;
-%a=A;
+
 % Simulate noisy measurements; here including inverse crime
 m = A2x2mult(a,c11,c12,c21,c22,g);
-%m=m/normest(m);%Ei toiminut, tuotti harmaan kuvan ja ison virheen
+
 % Add noise
-m = m + noiselevel*max(abs(m(:)))*randn(size(m));
+%m = m + noiselevel*max(abs(m(:)))*randn(size(m));
 
 % Solve the minimization problem
 %         min (x^T H x - 2 b^T x), 
@@ -121,6 +112,7 @@ m = m + noiselevel*max(abs(m(:)))*randn(size(m));
 % and 
 %         b = A^T mn.
 % The positive constant alpha is the regularization parameter
+
 b = A2x2Tmult(a,c11,c12,c21,c22,m);
 %%
 % Solve the minimization problem using conjugate gradient method.
@@ -136,23 +128,18 @@ rho = zeros(iter,1); % initialize parameters
 % very old version: Hx     = (A.')*(A*x) + alpha*x; 
 % second try:       Hx     = (A.')*Amult(A,x) + alpha*x;
 
-%alpha matriisin tilalle: Reg_mat
-Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
-%T‰m‰n tilalle laitetaaankin L matriisi!!!
-%L = [alpha1*-eye(N^2)+diag(ones(1,N^2-1),1),zeros(N^2);zeros(N^2),alpha2*-eye(N^2)+diag(ones(1,N^2-1),1)];
-%L(end,1)=1; % T‰ss‰ oli jossain kohdassa nolla v‰‰rin
+% L-matrix for Generalized Tikhonov!!!
+n=40;
+m=40;
+Lx = spdiags([ones(n*m,1) -ones(n*m,1)], [0,-n], n*m, n*m);
+Ly = spdiags([ones(n*m,1) -ones(n*m,1)], [0,1], n*m, n*m);
+Ly((m:m:n*m-1)+1,(m:m:n*m)) = 0;
 
-L1 = [alpha1*-eye(N^2)+diag(ones(1,N^2-1),1),zeros(N^2)];
-L1(end,1)=1;
-L2 = [zeros(N^2),alpha2*-eye(N^2)+diag(ones(1,N^2-1),1)];
-L2(end,1)=1;
 
-L=[L1;L2];
-
-% ***New***
-%Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)]
-Hg     = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g)) + L*g;
-
+%Hg     = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g)) + L*g;
+Hg     = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,g));
+L      = [alpha*Lx,zeros(N^2);zeros(N^2),alpha*Ly];
+Hg     = Hg+L*g;
 r      = b-Hg;
 rho(1) = r(:).'*r(:);
 
@@ -166,7 +153,7 @@ for kkk = 1:iter
         p    = r + beta*p;
     end
     w         = A2x2Tmult(a,c11,c12,c21,c22,A2x2mult(a,c11,c12,c21,c22,p));
-    w          = w + Reg_mat*p;
+    w          = w + L*p;
     aS         = rho(kkk)/(p.'*w);
     g          = g + aS*p;
     r          = r - aS*w;
@@ -198,7 +185,7 @@ err_CGM2 = norm(M2(:)-CGM2(:))/norm(M2(:));
 % eval(['save XRMG_Tikhonov', num2str(N), ' recn alpha target comptime err_sup err_squ']);
 
 %% Take a look at the results
-figure(3);
+figure(5);
 % Original target1
 subplot(2,2,1);
 imagesc(reshape(M1,N,N));
@@ -212,7 +199,7 @@ imagesc(CGM1);
 colormap gray;
 axis square;
 axis off;
-title(['Relative error=', num2str(err_CGM1), ', \alpha_1=', num2str(alpha1),',\alpha_2=' num2str(alpha2)]);
+title(['Relative error=', num2str(err_CGM1), ', \alpha=', num2str(alpha)]);
 % Original target2
 subplot(2,2,3)
 imagesc(reshape(M2,N,N));

@@ -7,7 +7,7 @@ clear all;
 tic
 %% Choices for the user
 % Choose the size of the unknown. The image has size MxM.
-M          = 40;
+M          = 512;
 % Adjust regularization parameters
 alpha1     = 10;             
 alpha2     = 10;
@@ -48,8 +48,8 @@ c22    = 12.32;   % Iodine 50kV
 % Define overlapping materials: HY phantoms!
 %M1 = imresize(double(imread('HY_Al.bmp')), [M M]);
 %M2 = imresize(double(imread('HY_square_inv.jpg')), [M M]);
-M1 = imresize(double(imread('material1.png')), [M M]);
-M2 = imresize(double(imread('material2.png')), [M M]);
+M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [M M]);
+M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [M M]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
 % % Try to normalize the image between 0 and 255
@@ -133,7 +133,10 @@ end
 disp('Creating gradient function...');
 graddu = graddu(:);
 % Set different regularization parameters alpha1 and alpha2 for the images
-RegMat = [alpha1*eye(M^2),zeros(M^2);zeros(M^2),alpha2*eye(M^2)];
+%Tehd‰‰n eye matriisi
+opMatrix = opEye(M^2);
+zeroMatrix = opZeros(M,N)
+RegMat = [alpha1*opMatrix,zeros(M^2);zeros(M^2),alpha2*opMatrix];
 gradF1 = 2*A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,M),ang)-2*b+RegMat*g+beta*graddu;
 disp('Gradient function F1 ready!');
 %% Decide the first step size

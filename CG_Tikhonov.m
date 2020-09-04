@@ -10,12 +10,12 @@ tic
 
 % Regularization parameter
 alpha1  = 10;
-alpha2  = 6;
+alpha2  = 10;
 N       = 40;
 iter    = 100;% maximum number of iterations
 
 % Choose relative noise level in simulated noisy data
-noiselevel = 0.001;
+noiselevel = 0.01;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;
@@ -30,10 +30,16 @@ ang = angle0 + [0:(Nang-1)]/Nang*180;
 % Define attenuation coefficients: Iodine and PVC
 material1='PVC';
 material2='Iodine';
-c11    = 42.2057; %Iodine 30kV
-c21    = 60.7376; %Iodine 50kV
-c12    = 2.096346;%PVC 30kV
-c22    = 0.640995;%PVC 50kV
+% c11    = 42.2057; %Iodine 30kV
+% c12    = 2.096346;%PVC 30kV
+% c21    = 60.7376; %Iodine 50kV
+% c22    = 0.640995;%PVC 50kV
+
+%Hyvät kertoimet:
+c11    = 1.491; %PVC 30 30kV
+c12    = 8.561; %Iodine 30kV
+c21    = 0.456; %PVC 50kV
+c22    = 12.32;   % Iodine 50kV
 
 %Huonommin toimivat materiaalit?
 % material1='Iodine';
@@ -47,8 +53,8 @@ c22    = 0.640995;%PVC 50kV
 %M1 = imresize(double(imread('HY_Al.bmp')),[N N]);
 %M2=scale01(M2);
 %M2 = imresize(double(imread('HY_square_inv.jpg')),[N N]);
-M1 = imresize(double(imread('new_HY_material_one_bmp.bmp')), [N N]);
-M2 = imresize(double(imread('new_HY_material_two_bmp.bmp')), [N N]);
+M1 = imresize(double(imread('material1.png')), [N N]);
+M2 = imresize(double(imread('material2.png')), [N N]);
 %M1 = imresize(double(imread('selkaranka_phantom.jpg')), [N N]);
 %M2 = imresize(double(imread('selkaranka_phantom_nurin.jpg')), [N N]);
 M1=M1(:,:,1);
@@ -136,7 +142,7 @@ rho = zeros(iter,1); % initialize parameters
 % very old version: Hx     = (A.')*(A*x) + alpha*x; 
 % second try:       Hx     = (A.')*Amult(A,x) + alpha*x;
 
-%alpha matriisin tilalle: Reg_mat
+% alpha matriisin tilalle: Reg_mat
 Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
 % ***New***
 %Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)]

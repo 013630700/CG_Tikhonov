@@ -12,13 +12,12 @@ clear all;
 tic
 %% Choises for the user
 % Choose the size of the unknown. The image has size NxN.
-N       = 512;
+N       = 40;
 % Regularization parameter
-alpha  = 80;%50;%80;             
-beta  = 150;%50;%150; %10000
+alpha  = 10;%80;             
 % Choose relative noise level in simulated noisy data
 noiselevel = 0.01;
-iter = 42;
+iter = 100;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;
@@ -113,19 +112,29 @@ rho = zeros(iter,1); % initialize parameters
 % because (A.')*A may be a full matrix and in that case we lose 
 % the advantage of the iterative solution method!
 
+% L-matrix for Generalized Tikhonov!!!
+% Tehd‰‰n L matriisi Kronecker tulon avulla...
+L = spdiags([-ones(N-1,1), ones(N-1,1); 0, 1], 0:1, N, N);
+L1 = kron(speye(N),L);
+L2 = kron(L, speye(N));
+L1T = L1';
+L2T = L2';
 
-%***New Q2!****
-% Q_2 tehd‰‰n luomalla tavallinen matriisi M = [alpha, beta; beta, alpha]
-% ja sitten ottamalla ns. Kronecker tulon opEye:n kanssa, jolloin jokainen M:n
-% alkio kerrotaan opEye:ll‰ ja siit‰ tulee block matrix
-pMatrix = [alpha, beta; beta, alpha];
-opMatrix = opEye(N^2);
-Q2 = kron(pMatrix,opMatrix);
+% %***New Q2!****
+% % Q_2 tehd‰‰n luomalla tavallinen matriisi M = [alpha, beta; beta, alpha]
+% % ja sitten ottamalla ns. Kronecker tulon opEye:n kanssa, jolloin jokainen M:n
+% % alkio kerrotaan opEye:ll‰ ja siit‰ tulee block matrix
+% pMatrix = [alpha, beta; beta, alpha];
+% opMatrix = opEye(N^2);
+% Q2 = kron(pMatrix,opMatrix);
 %Q2 = [alpha*opEye(N^2),beta*opEye(N^2);beta*opEye(N^2),alpha*opEye(N^2)];
 %Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)];
 %Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
-Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N),ang) + Q2*g(:);
-
+Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N),ang);
+L      = L1T*L1 + L2T*L2;
+opMatrix = opEye(N^2);
+L      = [alpha*L,opMatrix;opMatrix,alpha*L];
+Hg     = Hg+L*g;
 r    = b-Hg;
 rho(1) = r(:).'*r(:);
 
@@ -139,7 +148,7 @@ for kkk = 1:iter
         p    = r + bee*p;
     end
     w          = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,p,ang,N),ang);
-    w          = w + Q2*p;
+    w          = w + L*p;
     aS         = rho(kkk)/(p.'*w);
     g          = g + aS*p;
     r          = r - aS*w;
@@ -151,10 +160,10 @@ for kkk = 1:iter
 % %   recn2 = g(1601:3200);
 % %   recn2 = reshape(recn2,N,N);
 % %   imshow(recn2,[]);
-% figure(3)
-%   recn1 = reshape(g(1:(end/2),1:end),N,N);
-%   imshow(recn1,[]);
-%   
+
+  %recn1 = reshape(g(1:(end/2),1:end),N,N);
+  %imshow(recn1,[]);
+  
   %Check if the error is as small enough
   CG1 = reshape(g(1:(end/2),1:end),N,N);
   CG2 = reshape(g((end/2)+1:end,1:end),N,N);
@@ -202,7 +211,7 @@ imagesc(CG1);
 colormap gray;
 axis square;
 axis off;
-title(['Approximate error ', num2str(round(err_CG1*100,1)), '%, \alpha=', num2str(alpha), ', \beta=', num2str(beta)]);
+title(['Approximate error ', num2str(round(err_CG1*100,1)), '%, \alpha=', num2str(alpha)]);
 % Original target2
 subplot(2,2,3)
 imagesc(reshape(g2,N,N));

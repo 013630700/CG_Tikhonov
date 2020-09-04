@@ -14,8 +14,8 @@ tic
 % Choose the size of the unknown. The image has size NxN.
 N       = 512;
 % Regularization parameter
-alpha  = 80;%50;%80;             
-beta  = 150;%50;%150; %10000
+alpha  = 5000;%10;%80;             
+beta  = 200;%89;%150; %10000
 % Choose relative noise level in simulated noisy data
 noiselevel = 0.01;
 iter = 42;
@@ -114,18 +114,19 @@ rho = zeros(iter,1); % initialize parameters
 % the advantage of the iterative solution method!
 
 
-%***New Q2!****
-% Q_2 tehd‰‰n luomalla tavallinen matriisi M = [alpha, beta; beta, alpha]
-% ja sitten ottamalla ns. Kronecker tulon opEye:n kanssa, jolloin jokainen M:n
-% alkio kerrotaan opEye:ll‰ ja siit‰ tulee block matrix
-pMatrix = [alpha, beta; beta, alpha];
+% L-matrix for Generalized Tikhonov!!!
+% Tehd‰‰n L matriisi Kronecker tulon avulla...
+L = spdiags([-ones(N-1,1), ones(N-1,1); 0, 1], 0:1, N, N);
+L1 = kron(speye(N),L);
+L2 = kron(L, speye(N));
+L1T = L1';
+L2T = L2';
+Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N),ang);
+L      = L1T*L1 + L2T*L2;
+%Tehd‰‰n eye matriisi
 opMatrix = opEye(N^2);
-Q2 = kron(pMatrix,opMatrix);
-%Q2 = [alpha*opEye(N^2),beta*opEye(N^2);beta*opEye(N^2),alpha*opEye(N^2)];
-%Q2 = [alpha*eye(N^2),beta*eye(N^2);beta*eye(N^2),alpha*eye(N^2)];
-%Reg_mat = [alpha1*eye(N^2),zeros(N^2);zeros(N^2),alpha2*eye(N^2)];
-Hg  = A2x2Tmult_matrixfree(c11,c12,c21,c22,A2x2mult_matrixfree(c11,c12,c21,c22,g,ang,N),ang) + Q2*g(:);
-
+Q2 = [alpha*L,beta*opEye(N^2);beta*opEye(N^2),alpha*L];
+Hg     = Hg+Q2*g;
 r    = b-Hg;
 rho(1) = r(:).'*r(:);
 
@@ -151,10 +152,10 @@ for kkk = 1:iter
 % %   recn2 = g(1601:3200);
 % %   recn2 = reshape(recn2,N,N);
 % %   imshow(recn2,[]);
-% figure(3)
+% figure(2)
 %   recn1 = reshape(g(1:(end/2),1:end),N,N);
 %   imshow(recn1,[]);
-%   
+  
   %Check if the error is as small enough
   CG1 = reshape(g(1:(end/2),1:end),N,N);
   CG2 = reshape(g((end/2)+1:end,1:end),N,N);
@@ -186,9 +187,9 @@ err_CG1 = norm(M1(:)-CG1(:))/norm(M1(:));
 %err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
 err_CG2 = norm(M2(:)-CG2(:))/norm(M2(:));
 % Yhteisvirhe keskiarvona molempien virheest‰
-err_total = (err_CG1+err_CG2)/2
+err_total = (err_CG1+err_CG2)/2;
 % Take a look at the results
-figure(1);
+figure(4);
 % Original phantom1
 subplot(2,2,1);
 imagesc(reshape(g1,N,N));
