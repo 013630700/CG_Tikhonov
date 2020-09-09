@@ -7,7 +7,7 @@ clear all;
 tic
 %% Choices for the user
 % Choose the size of the unknown. The image has size MxM.
-M          = 40;
+M          = 512;
 % Adjust regularization parameters
 alpha1     = 10;             
 alpha2     = 10;
@@ -201,7 +201,7 @@ disp(['Sup relative error for first reconstruction: ', num2str(err_sup1)]);
 err_sup2 = max(max(abs(M2(:)-BB2(:))))/max(max(abs(BB2)));
 disp(['Sup relative error for second reconstruction: ', num2str(err_sup2)]);
 %% Take a look at the results
-figure(2);
+figure(20);
 % Original M1
 subplot(2,2,1);
 imagesc(reshape(M1,M,M));

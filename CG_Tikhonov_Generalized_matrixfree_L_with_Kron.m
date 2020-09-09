@@ -1,14 +1,15 @@
 % Calculates two material decomposition using matrixfree functions.
-
-% Example computations related to X-ray tomography. Here we apply Tikhonov 
+% Uses spot operator. Includes matrix L for Generalized Tikohonov. 
+%
+% Example computations related to X-ray tomography. Here we apply Generalized Tikhonov 
 % regularization and solve the normal equations using the conjugate 
-% gradient method. The approach uses sparse matrix A and is much more
-% efficient computationally than the singular value decomposition approach.
+% gradient method.
 %
 % Jennifer Mueller and Samuli Siltanen, October 2012
 % Modified by Salla 5.12.2019
+
 clear all;
-% Measure computation time later; start clocking here
+% Measure computation time
 tic
 %% Choises for the user
 % Choose the size of the unknown. The image has size NxN.
@@ -17,11 +18,11 @@ N       = 40;
 alpha  = 10;%80;             
 % Choose relative noise level in simulated noisy data
 noiselevel = 0.01;
-iter = 100;
+iter = 51;
 % Choose measurement angles (given in degrees, not radians). 
 Nang    = 65; 
 angle0  = -90;
-ang     = angle0 + [0:(Nang-1)]/Nang*180;
+ang     = angle0 + (0:(Nang-1))/Nang*180;
 
 % Define attenuation coefficients: Iodine and Al
 % material1='aluminum';
@@ -69,6 +70,7 @@ M2 = imresize(double(imread('material2.png')), [N N]);
 %M2 = imresize(double(imread('selkaranka_phantom_nurin.jpg')), [N N]);
 M1=M1(:,:,1);
 M2=M2(:,:,1);
+
 % 
 % % Try to normalize the image between 0 and 255
 % min1=min(min(g1));
@@ -81,6 +83,7 @@ M2=M2(:,:,1);
 % Vektorize
 g1      = M1(:);
 g2      = M2(:);
+
 % Combine
 g      = [g1(:);g2(:)];
 %% Start reconstruction
@@ -168,11 +171,15 @@ for kkk = 1:iter
   CG1 = reshape(g(1:(end/2),1:end),N,N);
   CG2 = reshape(g((end/2)+1:end,1:end),N,N);
   err_CG1 = norm(M1(:)-CG1(:))/norm(M1(:));
+  SSIM1 = ssim(M1,CG1);
+  SSIM2 = ssim(M2,CG2);
+  SSIM_total = (SSIM1+SSIM2)/2;
   err_CG2 = norm(M2(:)-CG2(:))/norm(M2(:));
   err_total = (err_CG1+err_CG2)/2;
       format short e
     % Monitor the run
-    disp(['Iteration ', num2str(kkk,'%4d'),', total error value ',num2str(err_total)])
+    disp(['Iteration ', num2str(kkk,'%4d'),', total error value ',num2str(round(err_total,3),'%.3f'),', total SSIM value ',num2str(SSIM_total,'%.3f')])
+    %fprintf('%f | %.2f | %12f\n', kkk, err_total, SSIM_total);
     if err_total < 1*10^-6
         disp('virhe alle kohinan!')
         break;
@@ -191,11 +198,14 @@ comptime = toc;
 % Square error of reconstruction 1:
 %err_sup1 = max(max(abs(g1-recn1)))/max(max(abs(g1)));
 err_CG1 = norm(M1(:)-CG1(:))/norm(M1(:));
+SSIM1 = ssim(M1,CG1);
 % Target 2
 %err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
 err_CG2 = norm(M2(:)-CG2(:))/norm(M2(:));
+SSIM2 = ssim(M2,CG2);
 % Yhteisvirhe keskiarvona molempien virheestä
-err_total = (err_CG1+err_CG2)/2
+err_total = (err_CG1+err_CG2)/2;
+SSIM_total = (SSIM1+SSIM2)/2;
 % Take a look at the results
 figure(1);
 % Original phantom1
@@ -226,6 +236,16 @@ colormap gray;
 axis square;
 axis off;
 title(['Approximate error ' num2str(round(err_CG2*100,1)), '%, iter=' num2str(iter)]);
+
+%%%%% Otherkind of plot %%%%%%
+figure(59)
+%imagesc([M1,CG1,M2,CG2]);
+imshow([M1,CG1;M2,CG2]);
+title(['Approximate error: ' num2str(round(err_CG2*100,1)),'%,    SSIM: ' num2str(round(SSIM1,3)) ',         Approximate error: ' num2str(round(err_CG2*100,1)),'%,    SSIM: ' num2str(round(SSIM2,3)) ', iter: ' num2str(iter)]);
+colormap gray;
+axis off;
+
+
 % figure(560)
 % imagesc(reshape(CG1,N,N));
 % colormap gray;

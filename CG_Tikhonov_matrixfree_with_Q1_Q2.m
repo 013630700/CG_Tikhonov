@@ -182,12 +182,14 @@ comptime = toc;
 % Square error of reconstruction 1:
 %err_sup1 = max(max(abs(g1-recn1)))/max(max(abs(g1)));
 err_CG1 = norm(M1(:)-CG1(:))/norm(M1(:));
+SSIM1 = ssim(CG1,M1);
 % Target 2
 %err_sup2 = max(max(abs(g2-recn2)))/max(max(abs(g2)));
 err_CG2 = norm(M2(:)-CG2(:))/norm(M2(:));
+SSIM2 = ssim(CG2,M2);
 % Yhteisvirhe keskiarvona molempien virheestä
 err_total = (err_CG1+err_CG2)/2
-% Take a look at the results
+%% Take a look at the results
 figure(1);
 % Original phantom1
 subplot(2,2,1);
@@ -217,6 +219,15 @@ colormap gray;
 axis square;
 axis off;
 title(['Approximate error ' num2str(round(err_CG2*100,1)), '%, iter=' num2str(iter)]);
+%%%%% Otherkind of plot %%%%%%
+figure(59)
+%imagesc([M1,CG1,M2,CG2]);
+imshow([M1,CG1;M2,CG2]);
+title(['Approximate error: ' num2str(round(err_CG2*100,1)),'%,    SSIM: ' num2str(round(SSIM1,3)) ',         Approximate error: ' num2str(round(err_CG2*100,1)),'%,     SSIM: ' num2str(round(SSIM2,3)) ', iter: ' num2str(iter)]);
+colormap gray;
+axis off;
+%figure(60)
+%imagesc([M2,CG2]);
 % figure(560)
 % imagesc(reshape(CG1,N,N));
 % colormap gray;
